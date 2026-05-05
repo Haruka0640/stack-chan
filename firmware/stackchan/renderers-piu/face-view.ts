@@ -40,14 +40,16 @@ class DrawerEdgeSwipeBehavior extends Behavior {
   startedOnRightEdge = false
   triggered = false
 
-  onTouchBegan(container: PiuContainer, _id: number, x: number, y: number) {
+  onTouchBegan(container: PiuContainer, _id: number, x: number, y: number, ticks: number) {
+    container.bubble('onScreenTouchBegan', x, y, ticks)
     this.startX = x
     this.startY = y
     this.triggered = false
     this.startedOnRightEdge = x >= this.getWidth(container) - DRAWER_EDGE_WIDTH
   }
 
-  onTouchMoved(container: PiuContainer, _id: number, x: number, y: number) {
+  onTouchMoved(container: PiuContainer, _id: number, x: number, y: number, ticks: number) {
+    container.bubble('onScreenTouchMoved', x, y, ticks)
     if (this.triggered || !this.startedOnRightEdge) return
 
     const dx = x - this.startX
@@ -59,7 +61,8 @@ class DrawerEdgeSwipeBehavior extends Behavior {
     }
   }
 
-  onTouchEnded() {
+  onTouchEnded(container: PiuContainer, _id: number, x: number, y: number, ticks: number) {
+    container.bubble('onScreenTouchEnded', x, y, ticks)
     this.startedOnRightEdge = false
     this.triggered = false
   }

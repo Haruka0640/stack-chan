@@ -61,11 +61,16 @@ export type DrawerButtonRegistration = {
   initialState?: boolean
 }
 
-type DrawerButtonRegistry = {
+export type ScreenTouchPhase = 'began' | 'moved' | 'ended'
+export type ScreenTouchHandler = (phase: ScreenTouchPhase, x: number, y: number, ticks: number) => void
+
+type ApplicationController = {
   addDrawerButton: (button: DrawerButtonRegistration) => void
   removeDrawerButton: (key: string) => void
   clearDrawerButtons: () => void
   setDrawerButtonState: (key: string, active: boolean) => void
+  addScreenTouchListener: (listener: ScreenTouchHandler) => void
+  removeScreenTouchListener: (listener: ScreenTouchHandler) => void
 }
 
 export type Button = {
@@ -130,7 +135,7 @@ export class Robot {
   #updateFaceHandler: Timer
   #balloon: FaceDecorator
   #drawerCallbacks: Map<string, (robot: Robot) => unknown>
-  #drawerRegistry: DrawerButtonRegistry
+  #applicationController: ApplicationController
   #drawerBehavior: Record<string, unknown> | null
   updating: boolean
   constructor(params: RobotConstructorParam<ButtonName>) {
@@ -192,11 +197,13 @@ export class Robot {
     this.#emotion = this.#faceContext.emotion
     this.#drawerCallbacks = new Map()
     this.#drawerBehavior = null
-    this.#drawerRegistry = {
+    this.#applicationController = {
       addDrawerButton: (button) => this.addDrawerButton(button),
       removeDrawerButton: (key) => this.removeDrawerButton(key),
       clearDrawerButtons: () => this.clearDrawerButtons(),
       setDrawerButtonState: (key, active) => this.setDrawerButtonState(key, active),
+      addScreenTouchListener: (listener) => this.addScreenTouchListener(listener),
+      removeScreenTouchListener: (listener) => this.removeScreenTouchListener(listener),
     }
   }
 
@@ -453,8 +460,8 @@ export class Robot {
     return this.#renderer
   }
 
-  get application(): DrawerButtonRegistry {
-    return this.#drawerRegistry
+  get application(): ApplicationController {
+    return this.#applicationController
   }
 
   private getDrawerController():
@@ -472,6 +479,21 @@ export class Robot {
           addButton?: (button: unknown) => void
           removeButton?: (key: string) => void
           setButtonState?: (key: string, active: boolean) => void
+        }
+      | undefined
+  }
+
+  private getScreenTouchController():
+    | {
+        addListener?: (listener: ScreenTouchHandler) => void
+        removeListener?: (listener: ScreenTouchHandler) => void
+      }
+    | undefined {
+    const app = this.#renderer?.application as { screenTouchController?: unknown } | undefined
+    return app?.screenTouchController as
+      | {
+          addListener?: (listener: ScreenTouchHandler) => void
+          removeListener?: (listener: ScreenTouchHandler) => void
         }
       | undefined
   }
@@ -536,6 +558,16 @@ export class Robot {
   private setDrawerButtonState(key: string, active: boolean): void {
     const controller = this.getDrawerController()
     controller?.setButtonState?.(key, active)
+  }
+
+  private addScreenTouchListener(listener: ScreenTouchHandler): void {
+    const controller = this.getScreenTouchController()
+    controller?.addListener?.(listener)
+  }
+
+  private removeScreenTouchListener(listener: ScreenTouchHandler): void {
+    const controller = this.getScreenTouchController()
+    controller?.removeListener?.(listener)
   }
 
   pause() {

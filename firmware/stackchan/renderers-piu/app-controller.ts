@@ -11,6 +11,9 @@ import {
 
 export type AppControllerParams = FaceViewParams
 
+export type ScreenTouchPhase = 'began' | 'moved' | 'ended'
+export type ScreenTouchHandler = (phase: ScreenTouchPhase, x: number, y: number, ticks: number) => void
+
 type DrawerControllerHost = {
   drawerController?: {
     setButtons?: (buttons: DrawerButtonSpec[]) => void
@@ -18,12 +21,17 @@ type DrawerControllerHost = {
     removeButton?: (key: string) => void
     setButtonState?: (key: string, active: boolean) => void
   }
+  screenTouchController?: {
+    addListener?: (listener: ScreenTouchHandler) => void
+    removeListener?: (listener: ScreenTouchHandler) => void
+  }
 }
 
 export class AppController extends Behavior {
   #application: PiuApplication | null = null
   #view: PiuContainer | null = null
   #viewBehavior: FaceViewBehavior | null = null
+  #screenTouchListeners = new Set<ScreenTouchHandler>()
 
   onCreate(application: PiuApplication, data: AppControllerParams) {
     this.#application = application
@@ -115,6 +123,26 @@ export class AppController extends Behavior {
     trace('[AppController] onFaceTouch ignored; use right-edge swipe for drawer\n')
   }
 
+  addScreenTouchListener(listener: ScreenTouchHandler): void {
+    this.#screenTouchListeners.add(listener)
+  }
+
+  removeScreenTouchListener(listener: ScreenTouchHandler): void {
+    this.#screenTouchListeners.delete(listener)
+  }
+
+  onScreenTouchBegan(_application: PiuApplication, x: number, y: number, ticks: number): void {
+    this.dispatchScreenTouch('began', x, y, ticks)
+  }
+
+  onScreenTouchMoved(_application: PiuApplication, x: number, y: number, ticks: number): void {
+    this.dispatchScreenTouch('moved', x, y, ticks)
+  }
+
+  onScreenTouchEnded(_application: PiuApplication, x: number, y: number, ticks: number): void {
+    this.dispatchScreenTouch('ended', x, y, ticks)
+  }
+
   private attachControllers(): void {
     if (!this.#application) return
     const host = this.#application as DrawerControllerHost
@@ -123,6 +151,16 @@ export class AppController extends Behavior {
       addButton: (button) => this.addDrawerButton(button),
       removeButton: (key) => this.removeDrawerButton(key),
       setButtonState: (key, active) => this.setDrawerButtonState(key, active),
+    }
+    host.screenTouchController = {
+      addListener: (listener) => this.addScreenTouchListener(listener),
+      removeListener: (listener) => this.removeScreenTouchListener(listener),
+    }
+  }
+
+  private dispatchScreenTouch(phase: ScreenTouchPhase, x: number, y: number, ticks: number): void {
+    for (const listener of this.#screenTouchListeners) {
+      listener(phase, x, y, ticks)
     }
   }
 }

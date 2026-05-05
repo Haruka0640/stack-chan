@@ -21,8 +21,8 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 ## Current Focus
 
 - Status: `[ ]`
-- Task: `P3-01`
-- Notes: P2 event abstraction is complete. Next likely step is investigating the CoreS3 touch input API exposed to MODs.
+- Task: `P4-01`
+- Notes: P3 screen gesture input is implemented. Next likely step is selecting expressions from pet state and one-shot reactions.
 
 ## Milestones
 
@@ -67,13 +67,13 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 - [x] `P3-00` Resolve conflict with the built-in drawer gesture.
   - Acceptance: Pet gestures do not accidentally open or close the drawer.
   - Verification: Manual CoreS3 test confirms downward pet swipe leaves drawer state unchanged.
-- [ ] `P3-01` Investigate CoreS3 touch input API available to MODs.
+- [x] `P3-01` Investigate CoreS3 touch input API available to MODs.
   - Acceptance: Identify the concrete API or robot service to read taps/swipes.
   - Verification: Notes added under `Implementation Notes`, including drawer interaction behavior.
-- [ ] `P3-02` Implement downward swipe detection.
+- [x] `P3-02` Implement downward swipe detection.
   - Acceptance: A top-to-bottom swipe dispatches `PET`.
   - Verification: Device trace shows `EVENT_PET`.
-- [ ] `P3-03` Add basic gesture thresholds.
+- [x] `P3-03` Add basic gesture thresholds.
   - Acceptance: Small accidental movements do not trigger petting.
   - Verification: Manual device test notes recorded.
 
@@ -123,9 +123,13 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 - Avoid firmware path imports inside MOD TypeScript unless the MOD build is confirmed to resolve them; `mcrun` compiles the MOD in isolation.
 - Run commands from `firmware/`.
 - Use `mods/pet/manifest.json` as the MOD manifest path.
-- Touch input API is not confirmed yet. Start `P3-01` by checking existing CoreS3 or renderer/input code.
+- Touch input API confirmed in `P3-01`: use `robot.touch` callbacks from the `stackchan/touch.ts` wrapper.
 - Drawer conflict note: `renderers-piu/behaviors/face.ts` bubbles `onFaceTouch` on touch end, and `renderers-piu/app-controller.ts` toggles the drawer in `onFaceTouch`. A raw screen swipe for petting may therefore also toggle the drawer unless we add a guard, change the drawer gesture, or choose a non-conflicting pet input.
 - Drawer conflict resolution: face taps no longer toggle the drawer. `renderers-piu/face-view.ts` now opens the drawer only when a touch starts within 16 px of the right screen edge and swipes left by at least 36 px with limited vertical drift.
+- CoreS3 touch input available to MODs: the Piu `Application` already owns the screen touch driver, so MODs should subscribe through `robot.application.addScreenTouchListener(listener)` instead of constructing another touch sensor on I2C.
+- Pet screen input adapter: `mods/pet/mod.ts` subscribes to `robot.application` screen touch callbacks and dispatches `PetEvent.PET` only through `dispatchPetEvent(PetEvent.PET)`. It keeps `robot.touch` as a fallback for non-Piu hosts.
+- Pet swipe thresholds: start y must be at or above 140 px, downward movement must be at least 60 px, horizontal drift must be at most 45 px, vertical movement must dominate horizontal movement by 1.5x, and gesture duration must be at most 1500 ticks.
+- Drawer interaction behavior: pet detection uses raw `robot.touch` callbacks and only listens for downward gestures. The drawer gesture remains a Piu right-edge left swipe, so a normal top-to-bottom pet swipe should not open the drawer.
 
 ## Verification Log
 
@@ -140,3 +144,5 @@ Record completed checks here with date, task ID, command or device action, and r
 - 2026-05-05: `P1-03` Added 5 second `Timer.repeat` decay. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
 - 2026-05-05: `P3-00` Changed drawer activation from face tap to right-edge inward swipe. `npm run format -- stackchan/renderers-piu/behaviors/face.ts stackchan/renderers-piu/face-view.ts stackchan/renderers-piu/app-controller.ts mods/pet` and matching lint command passed. `npm_config_target=esp32/m5stack_cores3 npm run build` passed with escalated filesystem access for the Moddable SDK build directory.
 - 2026-05-05: `P2-01`/`P2-02`/`P2-03` Added `PetEvent`, `dispatchPetEvent(event)`, and `onPet()` state updates. `npm run format:fix -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
+- 2026-05-05: `P3-01`/`P3-02`/`P3-03` Added `robot.touch` gesture adapter and top-to-bottom pet swipe thresholds. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`. Manual CoreS3 touch verification is still needed for real screen coordinates.
+- 2026-05-05: `P3` follow-up replaced raw CoreS3 touch construction with Piu screen touch listener plumbing to avoid `RangeError: duplicate address (in I2C)`. `npm run format -- stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/renderers-piu/face-view.ts mods/pet`, `npm run lint -- stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/renderers-piu/face-view.ts mods/pet`, and `npm_config_target=esp32/m5stack_cores3 npm run build` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
