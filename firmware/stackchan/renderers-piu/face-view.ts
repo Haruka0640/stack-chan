@@ -1,3 +1,4 @@
+import { Outline } from 'commodetto/outline'
 import {
   CommonView,
   CommonViewBehavior,
@@ -15,6 +16,7 @@ import {
   type Skin as PiuSkin,
   Skin,
 } from 'piu/MC'
+import type { Shape as PiuShape } from 'piu/shape'
 
 type FaceViewAnchors = {
   FACE?: PiuContainer
@@ -24,6 +26,18 @@ type FaceViewAnchors = {
 
 type FaceViewBaseParams = CommonViewParams
 type DieRegion = PiuContainer & { set: (x: number, y: number, w: number, h: number) => DieRegion; cut: () => void }
+type TouchRipple = {
+  active: boolean
+  touching: boolean
+  x: number
+  y: number
+  startedAt: number
+}
+type TouchRippleShape = Omit<PiuShape, 'fillOutline' | 'strokeOutline'> & {
+  fillOutline?: Outline
+  strokeOutline?: Outline
+  skin?: PiuSkin
+}
 type FaceContainerBehavior = {
   onFaceUpdate?: (container: PiuContainer, face: FaceContext) => void
   rehydrate?: (container: PiuContainer, face: Readonly<FaceContext>, palette?: FaceSkinPalette | null) => void
@@ -33,6 +47,11 @@ type FaceContainerBehavior = {
 const DRAWER_EDGE_WIDTH = 16
 const DRAWER_SWIPE_MIN_DISTANCE = 36
 const DRAWER_SWIPE_MAX_VERTICAL_DRIFT = 32
+const TOUCH_RIPPLE_DURATION_MS = 400
+const TOUCH_RIPPLE_MIN_RADIUS = 6
+const TOUCH_RIPPLE_MAX_RADIUS = 46
+const TOUCH_RIPPLE_STROKE_WIDTH = 2
+const TOUCH_RIPPLE_COLOR = '#a8a8a8'
 
 class DrawerEdgeSwipeBehavior extends Behavior {
   startX = 0
@@ -41,6 +60,7 @@ class DrawerEdgeSwipeBehavior extends Behavior {
   triggered = false
 
   onTouchBegan(container: PiuContainer, _id: number, x: number, y: number, ticks: number) {
+    container.distribute('onTouchRippleStart', x, y, ticks)
     container.bubble('onScreenTouchBegan', x, y, ticks)
     this.startX = x
     this.startY = y
@@ -49,6 +69,7 @@ class DrawerEdgeSwipeBehavior extends Behavior {
   }
 
   onTouchMoved(container: PiuContainer, _id: number, x: number, y: number, ticks: number) {
+    container.distribute('onTouchRippleMove', x, y)
     container.bubble('onScreenTouchMoved', x, y, ticks)
     if (this.triggered || !this.startedOnRightEdge) return
 
@@ -62,12 +83,14 @@ class DrawerEdgeSwipeBehavior extends Behavior {
   }
 
   onTouchEnded(container: PiuContainer, _id: number, x: number, y: number, ticks: number) {
+    container.distribute('onTouchRippleEnd', x, y)
     container.bubble('onScreenTouchEnded', x, y, ticks)
     this.startedOnRightEdge = false
     this.triggered = false
   }
 
-  onTouchCancelled() {
+  onTouchCancelled(container: PiuContainer) {
+    container.distribute('onTouchRippleCancel')
     this.startedOnRightEdge = false
     this.triggered = false
   }
@@ -76,6 +99,105 @@ class DrawerEdgeSwipeBehavior extends Behavior {
     return container.width ?? container.bounds?.width ?? 0
   }
 }
+
+const TouchRippleLayer = Shape.template((_data: object) => ({
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0,
+  active: false,
+  visible: false,
+  skin: new Skin({ stroke: TOUCH_RIPPLE_COLOR }),
+  Behavior: class extends Behavior {
+    ripple: TouchRipple = {
+      active: false,
+      touching: false,
+      x: 0,
+      y: 0,
+      startedAt: 0,
+    }
+
+    onCreate(shape: TouchRippleShape) {
+      shape.duration = TOUCH_RIPPLE_DURATION_MS
+    }
+
+    onFaceSkin(shape: TouchRippleShape, _palette: FaceSkinPalette) {
+      shape.skin = new Skin({ stroke: TOUCH_RIPPLE_COLOR })
+      shape.state = 0
+    }
+
+    onTouchRippleStart(shape: TouchRippleShape, x: number, y: number, ticks: number) {
+      this.ripple.active = true
+      this.ripple.touching = true
+      this.ripple.x = x
+      this.ripple.y = y
+      this.ripple.startedAt = ticks
+      shape.visible = true
+      shape.duration = TOUCH_RIPPLE_DURATION_MS
+      shape.time = 0
+      this.updatePath(shape, 0)
+      shape.start()
+    }
+
+    onTouchRippleMove(shape: TouchRippleShape, x: number, y: number) {
+      if (!this.ripple.active) return
+      this.ripple.x = x
+      this.ripple.y = y
+      this.updatePath(shape, this.currentFraction(shape))
+    }
+
+    onTouchRippleEnd(shape: TouchRippleShape, x: number, y: number) {
+      if (!this.ripple.active) return
+      this.ripple.touching = false
+      this.ripple.x = x
+      this.ripple.y = y
+      if (!shape.running) {
+        shape.time = Math.min(shape.time ?? 0, TOUCH_RIPPLE_DURATION_MS - 1)
+        shape.start()
+      }
+      this.updatePath(shape, this.currentFraction(shape))
+    }
+
+    onTouchRippleCancel(shape: TouchRippleShape) {
+      if (!this.ripple.active) return
+      this.ripple.touching = false
+      if (!shape.running) {
+        shape.time = Math.min(shape.time ?? 0, TOUCH_RIPPLE_DURATION_MS - 1)
+        shape.start()
+      }
+    }
+
+    onTimeChanged(shape: TouchRippleShape) {
+      this.updatePath(shape, this.currentFraction(shape))
+    }
+
+    onFinished(shape: TouchRippleShape) {
+      if (this.ripple.touching) {
+        shape.time = TOUCH_RIPPLE_DURATION_MS - 1
+        shape.start()
+        return
+      }
+      this.ripple.active = false
+      shape.visible = false
+      shape.strokeOutline = undefined
+    }
+
+    currentFraction(shape: TouchRippleShape): number {
+      return this.ripple.touching ? Math.min(shape.fraction ?? 0, 0.98) : (shape.fraction ?? 0)
+    }
+
+    updatePath(shape: TouchRippleShape, fraction: number) {
+      if (!this.ripple.active) return
+      const clampedFraction = Math.max(0, Math.min(1, fraction))
+      const radius = TOUCH_RIPPLE_MIN_RADIUS + (TOUCH_RIPPLE_MAX_RADIUS - TOUCH_RIPPLE_MIN_RADIUS) * clampedFraction
+      const path = new Outline.CanvasPath()
+      path.arc(this.ripple.x, this.ripple.y, radius, 0, 2 * Math.PI)
+      path.closePath()
+      shape.fillOutline = undefined
+      shape.strokeOutline = Outline.stroke(path, TOUCH_RIPPLE_STROKE_WIDTH)
+    }
+  },
+}))
 
 export type FaceViewParams = FaceViewBaseParams &
   FaceViewAnchors & {
@@ -295,6 +417,7 @@ export const FaceMainTemplate: TemplateFunction<FaceViewParams, PiuContainer> = 
     if (!$.EFFECTS) {
       $.EFFECTS = effects
     }
+    const touchRipple = new TouchRippleLayer($)
     const skin = $.skin ?? new Skin({ fill: defaultFaceContext.theme.secondary })
     return {
       left: 0,
@@ -304,7 +427,7 @@ export const FaceMainTemplate: TemplateFunction<FaceViewParams, PiuContainer> = 
       active: true,
       backgroundTouch: true,
       skin,
-      contents: [faceRegion, effects],
+      contents: [faceRegion, effects, touchRipple],
       Behavior: DrawerEdgeSwipeBehavior,
     }
   },

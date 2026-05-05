@@ -22,7 +22,7 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 
 - Status: `[ ]`
 - Task: `P4-01`
-- Notes: P3 screen gesture input is implemented. Next likely step is selecting expressions from pet state and one-shot reactions.
+- Notes: P8 touch ripple feedback is implemented. Next likely step is selecting expressions from pet state and one-shot reactions.
 
 ## Milestones
 
@@ -117,6 +117,18 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 - [ ] `P7-02` Document physical sensor integration points.
   - Acceptance: Notes explain where to add sensor read code and which event to dispatch.
 
+### P8: Touch Feedback
+
+- [x] `P8-01` Add a single `TouchRipple` UI for CoreS3 touch starts.
+  - Acceptance: Touch begin stores the start `x`/`y`, then expands one circle for 400ms.
+  - Verification: Biome check and CoreS3 build passed; device visual confirmation is still recommended.
+- [x] `P8-02` Make `TouchRipple` follow swipes and use a soft gray stroke.
+  - Acceptance: Touch move updates the ripple `x`/`y`; the ripple is gray instead of white.
+  - Verification: Biome check passed; device visual confirmation is still recommended.
+- [x] `P8-03` Keep `TouchRipple` visible while a swipe is still active.
+  - Acceptance: The ripple does not disappear mid-swipe even if touch duration exceeds 400ms.
+  - Verification: Biome check passed; device visual confirmation is still recommended.
+
 ## Implementation Notes
 
 - Keep implementation in TypeScript for this MOD. Use `mod.ts`.
@@ -130,6 +142,7 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 - Pet screen input adapter: `mods/pet/mod.ts` subscribes to `robot.application` screen touch callbacks and dispatches `PetEvent.PET` only through `dispatchPetEvent(PetEvent.PET)`. It keeps `robot.touch` as a fallback for non-Piu hosts.
 - Pet swipe thresholds: start y must be at or above 140 px, downward movement must be at least 60 px, horizontal drift must be at most 45 px, vertical movement must dominate horizontal movement by 1.5x, and gesture duration must be at most 1500 ticks.
 - Drawer interaction behavior: pet detection uses raw `robot.touch` callbacks and only listens for downward gestures. The drawer gesture remains a Piu right-edge left swipe, so a normal top-to-bottom pet swipe should not open the drawer.
+- Touch ripple plan: implement as one `TouchRipple` state object in the Piu face view touch layer. It should trigger from screen touch begin, follow screen touch move, remain visible while touch is active, render above the face/effects, use a soft gray stroke, and avoid changing pet event dispatch, expression state, or servo calls.
 
 ## Verification Log
 
@@ -146,3 +159,6 @@ Record completed checks here with date, task ID, command or device action, and r
 - 2026-05-05: `P2-01`/`P2-02`/`P2-03` Added `PetEvent`, `dispatchPetEvent(event)`, and `onPet()` state updates. `npm run format:fix -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
 - 2026-05-05: `P3-01`/`P3-02`/`P3-03` Added `robot.touch` gesture adapter and top-to-bottom pet swipe thresholds. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`. Manual CoreS3 touch verification is still needed for real screen coordinates.
 - 2026-05-05: `P3` follow-up replaced raw CoreS3 touch construction with Piu screen touch listener plumbing to avoid `RangeError: duplicate address (in I2C)`. `npm run format -- stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/renderers-piu/face-view.ts mods/pet`, `npm run lint -- stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/renderers-piu/face-view.ts mods/pet`, and `npm_config_target=esp32/m5stack_cores3 npm run build` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
+- 2026-05-05: `P8-01` Added single `TouchRipple` state and final-layer Piu shape rendering in `stackchan/renderers-piu/face-view.ts`. `npx biome check stackchan/renderers-piu/face-view.ts mods/pet` passed. `npm_config_target=esp32/m5stack_cores3 npm run build` passed with escalated filesystem access for the Moddable SDK build directory.
+- 2026-05-05: `P8-02` Updated `TouchRipple` to follow `onTouchMoved` coordinates and use a soft gray stroke. `npx biome check stackchan/renderers-piu/face-view.ts mods/pet` passed.
+- 2026-05-05: `P8-03` Updated `TouchRipple` to keep running while touch is active and only finish after touch end/cancel. `npx biome check stackchan/renderers-piu/face-view.ts mods/pet` passed.

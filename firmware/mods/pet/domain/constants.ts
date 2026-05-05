@@ -1,0 +1,10 @@
+export const STATE_UPDATE_INTERVAL_MS = 5000
+
+export const MIN_STATE_VALUE = 0
+export const MAX_STATE_VALUE = 100
+
+export const PET_SWIPE_MIN_DISTANCE_Y = 60
+export const PET_SWIPE_MAX_DRIFT_X = 45
+export const PET_SWIPE_MIN_VERTICAL_DOMINANCE = 1.5
+export const PET_SWIPE_MAX_DURATION_TICKS = 1500
+export const PET_SWIPE_START_MAX_Y = 140

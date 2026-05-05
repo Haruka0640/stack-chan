@@ -4,6 +4,12 @@
     "$(MODDABLE)/examples/manifest_typings.json"
   ],
   "modules": {
-    "*": "./mod"
+    "*": "./mod",
+    "./domain/constants": "./domain/constants",
+    "./domain/events": "./domain/events",
+    "./domain/state": "./domain/state",
+    "./domain/types": "./domain/types",
+    "./input/gesture-input": "./input/gesture-input",
+    "./support/log": "./support/log"
   }
 }
