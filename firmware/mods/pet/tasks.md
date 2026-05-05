@@ -21,8 +21,8 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 ## Current Focus
 
 - Status: `[ ]`
-- Task: `P1-01`
-- Notes: P0 is complete. Next likely step is implementing the typed pet state model.
+- Task: `P2-01`
+- Notes: P1 is complete and `P3-00` drawer conflict work is done. Next likely step is defining `PetEvent` and dispatch flow.
 
 ## Milestones
 
@@ -40,13 +40,13 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 
 ### P1: State Model
 
-- [ ] `P1-01` Implement `PetState` in TypeScript.
+- [x] `P1-01` Implement `PetState` in TypeScript.
   - Acceptance: `happiness`, `loneliness`, `sleepiness`, `affection`, and `lastInteractionAt` exist with spec defaults.
   - Verification: Startup trace prints initial state once.
-- [ ] `P1-02` Implement clamped state updates.
+- [x] `P1-02` Implement clamped state updates.
   - Acceptance: State values stay in the `0..100` range.
   - Verification: Unit-like helper checks or manual trace inspection.
-- [ ] `P1-03` Implement 5 second time decay.
+- [x] `P1-03` Implement 5 second time decay.
   - Acceptance: Every 5 seconds, loneliness and sleepiness increase, happiness decreases.
   - Verification: Trace shows periodic state updates.
 
@@ -64,9 +64,12 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 
 ### P3: Screen Gesture Input
 
+- [x] `P3-00` Resolve conflict with the built-in drawer gesture.
+  - Acceptance: Pet gestures do not accidentally open or close the drawer.
+  - Verification: Manual CoreS3 test confirms downward pet swipe leaves drawer state unchanged.
 - [ ] `P3-01` Investigate CoreS3 touch input API available to MODs.
   - Acceptance: Identify the concrete API or robot service to read taps/swipes.
-  - Verification: Notes added under `Implementation Notes`.
+  - Verification: Notes added under `Implementation Notes`, including drawer interaction behavior.
 - [ ] `P3-02` Implement downward swipe detection.
   - Acceptance: A top-to-bottom swipe dispatches `PET`.
   - Verification: Device trace shows `EVENT_PET`.
@@ -121,6 +124,8 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 - Run commands from `firmware/`.
 - Use `mods/pet/manifest.json` as the MOD manifest path.
 - Touch input API is not confirmed yet. Start `P3-01` by checking existing CoreS3 or renderer/input code.
+- Drawer conflict note: `renderers-piu/behaviors/face.ts` bubbles `onFaceTouch` on touch end, and `renderers-piu/app-controller.ts` toggles the drawer in `onFaceTouch`. A raw screen swipe for petting may therefore also toggle the drawer unless we add a guard, change the drawer gesture, or choose a non-conflicting pet input.
+- Drawer conflict resolution: face taps no longer toggle the drawer. `renderers-piu/face-view.ts` now opens the drawer only when a touch starts within 16 px of the right screen edge and swipes left by at least 36 px with limited vertical drift.
 
 ## Verification Log
 
@@ -130,3 +135,7 @@ Record completed checks here with date, task ID, command or device action, and r
 - 2026-05-05: `P0-01` Added `manifest.json` and TypeScript `mod.ts`. `npm run mod mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`, not TypeScript compilation.
 - 2026-05-05: `P0-02` Added safe startup behavior by setting `NEUTRAL` emotion only; no servo motion is triggered.
 - 2026-05-05: `P0-03` Added scoped `pet:` startup and emotion traces. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed.
+- 2026-05-05: `P1-01` Added typed `PetState` defaults and startup state trace.
+- 2026-05-05: `P1-02` Added clamped state update helper for all mood values.
+- 2026-05-05: `P1-03` Added 5 second `Timer.repeat` decay. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
+- 2026-05-05: `P3-00` Changed drawer activation from face tap to right-edge inward swipe. `npm run format -- stackchan/renderers-piu/behaviors/face.ts stackchan/renderers-piu/face-view.ts stackchan/renderers-piu/app-controller.ts mods/pet` and matching lint command passed. `npm_config_target=esp32/m5stack_cores3 npm run build` passed with escalated filesystem access for the Moddable SDK build directory.

@@ -30,6 +30,50 @@ type FaceContainerBehavior = {
   getBaseCoordinates?: (container: PiuContainer) => { left: number; top: number }
 }
 
+const DRAWER_EDGE_WIDTH = 16
+const DRAWER_SWIPE_MIN_DISTANCE = 36
+const DRAWER_SWIPE_MAX_VERTICAL_DRIFT = 32
+
+class DrawerEdgeSwipeBehavior extends Behavior {
+  startX = 0
+  startY = 0
+  startedOnRightEdge = false
+  triggered = false
+
+  onTouchBegan(container: PiuContainer, _id: number, x: number, y: number) {
+    this.startX = x
+    this.startY = y
+    this.triggered = false
+    this.startedOnRightEdge = x >= this.getWidth(container) - DRAWER_EDGE_WIDTH
+  }
+
+  onTouchMoved(container: PiuContainer, _id: number, x: number, y: number) {
+    if (this.triggered || !this.startedOnRightEdge) return
+
+    const dx = x - this.startX
+    const dy = Math.abs(y - this.startY)
+    if (dx <= -DRAWER_SWIPE_MIN_DISTANCE && dy <= DRAWER_SWIPE_MAX_VERTICAL_DRIFT) {
+      this.triggered = true
+      trace(`[FaceMain] drawer edge swipe x=${this.startX}->${x} y=${this.startY}->${y}\n`)
+      container.bubble('onDrawerOpen')
+    }
+  }
+
+  onTouchEnded() {
+    this.startedOnRightEdge = false
+    this.triggered = false
+  }
+
+  onTouchCancelled() {
+    this.startedOnRightEdge = false
+    this.triggered = false
+  }
+
+  private getWidth(container: PiuContainer): number {
+    return container.width ?? container.bounds?.width ?? 0
+  }
+}
+
 export type FaceViewParams = FaceViewBaseParams &
   FaceViewAnchors & {
     face?: PiuContainer
@@ -254,8 +298,11 @@ export const FaceMainTemplate: TemplateFunction<FaceViewParams, PiuContainer> = 
       right: 0,
       top: 0,
       bottom: 0,
+      active: true,
+      backgroundTouch: true,
       skin,
       contents: [faceRegion, effects],
+      Behavior: DrawerEdgeSwipeBehavior,
     }
   },
 ) as unknown as TemplateFunction<FaceViewParams, PiuContainer>

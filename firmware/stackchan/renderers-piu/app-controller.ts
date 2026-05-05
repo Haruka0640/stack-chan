@@ -112,8 +112,7 @@ export class AppController extends Behavior {
   }
 
   onFaceTouch(): void {
-    trace('[AppController] onFaceTouch\n')
-    this.onDrawerToggle()
+    trace('[AppController] onFaceTouch ignored; use right-edge swipe for drawer\n')
   }
 
   private attachControllers(): void {

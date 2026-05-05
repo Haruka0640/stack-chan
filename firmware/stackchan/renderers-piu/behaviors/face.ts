@@ -139,10 +139,6 @@ export class FaceBehavior extends Behavior {
     // container.bubble('onFaceContext', this.#current)
   }
 
-  onTouchEnded(container: PiuContainer) {
-    container.bubble('onFaceTouch')
-  }
-
   getBaseCoordinates(container: PiuContainer): { left: number; top: number } {
     if (this.#baseCoordinates === null) {
       const coordinates = container.coordinates
