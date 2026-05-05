@@ -21,8 +21,8 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 ## Current Focus
 
 - Status: `[ ]`
-- Task: `P2-01`
-- Notes: P1 is complete and `P3-00` drawer conflict work is done. Next likely step is defining `PetEvent` and dispatch flow.
+- Task: `P3-01`
+- Notes: P2 event abstraction is complete. Next likely step is investigating the CoreS3 touch input API exposed to MODs.
 
 ## Milestones
 
@@ -52,13 +52,13 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 
 ### P2: Event Abstraction
 
-- [ ] `P2-01` Define `PetEvent`.
+- [x] `P2-01` Define `PetEvent`.
   - Acceptance: `NONE`, `PET`, `POKE`, `TICKLE`, and `HOLD` events are represented in one place.
   - Verification: Handlers consume events rather than raw input details.
-- [ ] `P2-02` Add `dispatchPetEvent(event)`.
+- [x] `P2-02` Add `dispatchPetEvent(event)`.
   - Acceptance: All reactions flow through one dispatch function.
   - Verification: Screen input can be replaced by another source without touching reaction logic.
-- [ ] `P2-03` Implement `onPet()`.
+- [x] `P2-03` Implement `onPet()`.
   - Acceptance: Petting updates state exactly as specified in `plan.md`.
   - Verification: Trace confirms happiness +15, loneliness -20, affection +1, sleepiness -5.
 
@@ -139,3 +139,4 @@ Record completed checks here with date, task ID, command or device action, and r
 - 2026-05-05: `P1-02` Added clamped state update helper for all mood values.
 - 2026-05-05: `P1-03` Added 5 second `Timer.repeat` decay. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.
 - 2026-05-05: `P3-00` Changed drawer activation from face tap to right-edge inward swipe. `npm run format -- stackchan/renderers-piu/behaviors/face.ts stackchan/renderers-piu/face-view.ts stackchan/renderers-piu/app-controller.ts mods/pet` and matching lint command passed. `npm_config_target=esp32/m5stack_cores3 npm run build` passed with escalated filesystem access for the Moddable SDK build directory.
+- 2026-05-05: `P2-01`/`P2-02`/`P2-03` Added `PetEvent`, `dispatchPetEvent(event)`, and `onPet()` state updates. `npm run format:fix -- mods/pet` and `npm run lint -- mods/pet` passed. `npm run mod ./mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`.

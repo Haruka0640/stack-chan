@@ -4,6 +4,16 @@ const STATE_UPDATE_INTERVAL_MS = 5000
 const MIN_STATE_VALUE = 0
 const MAX_STATE_VALUE = 100
 
+const PetEvent = {
+  NONE: 'NONE',
+  PET: 'PET',
+  POKE: 'POKE',
+  TICKLE: 'TICKLE',
+  HOLD: 'HOLD',
+} as const
+
+type PetEvent = (typeof PetEvent)[keyof typeof PetEvent]
+
 type PetRobot = {
   setEmotion: (emotion: 'NEUTRAL') => void
 }
@@ -15,6 +25,8 @@ type PetState = {
   affection: number
   lastInteractionAt: number
 }
+
+let currentPetState: PetState | undefined
 
 function tracePet(message: string): void {
   trace(`pet: ${message}\n`)
@@ -62,9 +74,65 @@ function tracePetState(label: string, state: PetState): void {
   )
 }
 
+function tracePetEvent(event: PetEvent): void {
+  tracePet(`EVENT_${event}`)
+}
+
 function setSafeStartup(robot: PetRobot): void {
   robot.setEmotion('NEUTRAL')
   tracePet('emotion set to NEUTRAL')
+}
+
+function onPet(state: PetState): void {
+  updateState(state, {
+    happiness: 15,
+    loneliness: -20,
+    affection: 1,
+    sleepiness: -5,
+  })
+  state.lastInteractionAt = now()
+  tracePetState('pet reaction: happiness +15, loneliness -20, affection +1, sleepiness -5', state)
+}
+
+function onPoke(_state: PetState): void {
+  tracePet('poke reaction is not implemented yet')
+}
+
+function onTickle(_state: PetState): void {
+  tracePet('tickle reaction is not implemented yet')
+}
+
+function onHold(_state: PetState): void {
+  tracePet('hold reaction is not implemented yet')
+}
+
+function dispatchPetEvent(event: PetEvent): void {
+  if (event === PetEvent.NONE) {
+    return
+  }
+
+  const state = currentPetState
+  if (state === undefined) {
+    tracePet(`EVENT_${event} ignored because state is not ready`)
+    return
+  }
+
+  tracePetEvent(event)
+
+  switch (event) {
+    case PetEvent.PET:
+      onPet(state)
+      break
+    case PetEvent.POKE:
+      onPoke(state)
+      break
+    case PetEvent.TICKLE:
+      onTickle(state)
+      break
+    case PetEvent.HOLD:
+      onHold(state)
+      break
+  }
 }
 
 function updatePetStateByTime(state: PetState): void {
@@ -81,9 +149,11 @@ export function onRobotCreated(robot: PetRobot): void {
   setSafeStartup(robot)
 
   const state = createInitialPetState()
+  currentPetState = state
   tracePetState('initial state', state)
 
   Timer.repeat(() => {
+    dispatchPetEvent(PetEvent.NONE)
     updatePetStateByTime(state)
   }, STATE_UPDATE_INTERVAL_MS)
 }
