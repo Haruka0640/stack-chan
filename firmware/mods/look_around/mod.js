@@ -2,21 +2,31 @@ import Timer from 'timer'
 import { randomBetween } from 'stackchan-util'
 
 export function onRobotCreated(robot) {
-  let isFollowing = false
-  robot.button.a.onChanged = function () {
-    if (this.read()) {
-      trace('pressed A\n')
-      isFollowing = !isFollowing
+  let isFollowing = true
+  trace('look_around: following enabled\n')
+
+  if (robot.button?.a) {
+    robot.button.a.onChanged = function () {
+      if (this.read()) {
+        trace('pressed A\n')
+        isFollowing = !isFollowing
+      }
     }
   }
-  robot.button.b.onChanged = function () {
-    if (this.read()) {
-      trace('pressed B\n')
+
+  if (robot.button?.b) {
+    robot.button.b.onChanged = function () {
+      if (this.read()) {
+        trace('pressed B\n')
+      }
     }
   }
-  robot.button.c.onChanged = function () {
-    if (this.read()) {
-      trace('pressed C\n')
+
+  if (robot.button?.c) {
+    robot.button.c.onChanged = function () {
+      if (this.read()) {
+        trace('pressed C\n')
+      }
     }
   }
   const targetLoop = () => {

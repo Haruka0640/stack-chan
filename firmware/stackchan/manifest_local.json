@@ -16,6 +16,7 @@
       "tiltId": 2
     },
     "serial": {
+      "port": 1,
       "transmit": 17,
       "receive": 18
     }
