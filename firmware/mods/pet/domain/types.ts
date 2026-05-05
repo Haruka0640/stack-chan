@@ -1,5 +1,9 @@
+export type PetEmotion = 'NEUTRAL' | 'HAPPY' | 'SAD' | 'SLEEPY'
+
 export type PetRobot = {
-  setEmotion: (emotion: 'NEUTRAL') => void
+  setEmotion: (emotion: PetEmotion) => void
+  tone?: (hz: number, duration: number, volume?: number) => Promise<void>
+  setPose?: (pose: { rotation: { y: number; p: number; r: number } }, time?: number) => Promise<void>
   touch?: PetTouch
   application?: PetApplication
 }

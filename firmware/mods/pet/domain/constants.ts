@@ -1,7 +1,19 @@
 export const STATE_UPDATE_INTERVAL_MS = 5000
+export const PET_REACTION_DURATION_MS = 1200
 
 export const MIN_STATE_VALUE = 0
 export const MAX_STATE_VALUE = 100
+export const HAPPY_EXPRESSION_MIN = 70
+export const LONELY_EXPRESSION_MIN = 70
+export const SLEEPY_EXPRESSION_MIN = 70
+
+export const HAPPY_SOUND_VOLUME = 0.35
+export const HAPPY_SOUND_FIRST_HZ = 880
+export const HAPPY_SOUND_SECOND_HZ = 1175
+export const HAPPY_SOUND_DURATION_MS = 80
+
+export const HAPPY_MOTION_YAW = 0.12
+export const HAPPY_MOTION_STEP_SECONDS = 0.15
 
 export const PET_SWIPE_MIN_DISTANCE_Y = 60
 export const PET_SWIPE_MAX_DRIFT_X = 45

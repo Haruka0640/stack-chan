@@ -21,8 +21,8 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 ## Current Focus
 
 - Status: `[ ]`
-- Task: `P4-01`
-- Notes: P8 touch ripple feedback is implemented. Next likely step is selecting expressions from pet state and one-shot reactions.
+- Task: `P5-01`
+- Notes: P4 reactions are implemented. Next likely step is tuning idle mood thresholds and verifying lonely/sleepy expressions on device.
 
 ## Milestones
 
@@ -79,18 +79,18 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 
 ### P4: Reactions
 
-- [ ] `P4-01` Implement expression selection priority.
+- [x] `P4-01` Implement expression selection priority.
   - Acceptance: One-shot reaction > sleepy > lonely > happy > normal.
-  - Verification: State forcing or trace confirms selected expression.
-- [ ] `P4-02` Implement petting expression.
+  - Verification: `createPetReactionController()` selects one-shot `HAPPY`, then sleepy, lonely, happy, normal in order.
+- [x] `P4-02` Implement petting expression.
   - Acceptance: Petting immediately shows a happy reaction face.
-  - Verification: Device or renderer inspection.
-- [ ] `P4-03` Implement happy sound.
+  - Verification: `PET` event calls reaction controller and sets `HAPPY` for the one-shot window.
+- [x] `P4-03` Implement happy sound.
   - Acceptance: Petting plays two short high beeps.
-  - Verification: Device test or API inspection.
-- [ ] `P4-04` Implement happy servo motion.
+  - Verification: `PET` event starts two `robot.tone()` calls at 880 Hz and 1175 Hz.
+- [x] `P4-04` Implement happy servo motion.
   - Acceptance: Petting moves gently right, left, then center within safe limits.
-  - Verification: Device test with small angles first.
+  - Verification: `PET` event starts yaw motion of +/-0.12 rad, then returns to center.
 
 ### P5: Idle Mood
 
@@ -143,6 +143,7 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 - Pet swipe thresholds: start y must be at or above 140 px, downward movement must be at least 60 px, horizontal drift must be at most 45 px, vertical movement must dominate horizontal movement by 1.5x, and gesture duration must be at most 1500 ticks.
 - Drawer interaction behavior: pet detection uses raw `robot.touch` callbacks and only listens for downward gestures. The drawer gesture remains a Piu right-edge left swipe, so a normal top-to-bottom pet swipe should not open the drawer.
 - Touch ripple plan: implement as one `TouchRipple` state object in the Piu face view touch layer. It should trigger from screen touch begin, follow screen touch move, remain visible while touch is active, render above the face/effects, use a soft gray stroke, and avoid changing pet event dispatch, expression state, or servo calls.
+- P4 reaction controller: `mods/pet/domain/reactions.ts` owns expression priority and one-shot petting reactions. Petting sets `HAPPY` for 1200ms, plays two short high tones, and runs a small yaw motion right-left-center. State changes remain in `domain/events.ts`.
 
 ## Verification Log
 
@@ -162,3 +163,4 @@ Record completed checks here with date, task ID, command or device action, and r
 - 2026-05-05: `P8-01` Added single `TouchRipple` state and final-layer Piu shape rendering in `stackchan/renderers-piu/face-view.ts`. `npx biome check stackchan/renderers-piu/face-view.ts mods/pet` passed. `npm_config_target=esp32/m5stack_cores3 npm run build` passed with escalated filesystem access for the Moddable SDK build directory.
 - 2026-05-05: `P8-02` Updated `TouchRipple` to follow `onTouchMoved` coordinates and use a soft gray stroke. `npx biome check stackchan/renderers-piu/face-view.ts mods/pet` passed.
 - 2026-05-05: `P8-03` Updated `TouchRipple` to keep running while touch is active and only finish after touch end/cancel. `npx biome check stackchan/renderers-piu/face-view.ts mods/pet` passed.
+- 2026-05-05: `P4-01`/`P4-02`/`P4-03`/`P4-04` Added `domain/reactions.ts` for expression priority, petting `HAPPY` one-shot expression, two happy tones, and gentle yaw motion. `npx biome check mods/pet` passed. Targeted TypeScript check for `mods/pet` passed. `npm run mod -- mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl pet.xsa`; final failure was opening local `xsbug.app`.

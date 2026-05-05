@@ -1,4 +1,5 @@
 import { tracePet, tracePetState } from '../support/log'
+import type { PetReactionController } from './reactions'
 import { now, updateState } from './state'
 import type { PetState } from './types'
 
@@ -17,7 +18,7 @@ function tracePetEvent(event: PetEvent): void {
   tracePet(`EVENT_${event}`)
 }
 
-function onPet(state: PetState): void {
+function onPet(state: PetState, reactions: PetReactionController): void {
   updateState(state, {
     happiness: 15,
     loneliness: -20,
@@ -26,6 +27,7 @@ function onPet(state: PetState): void {
   })
   state.lastInteractionAt = now()
   tracePetState('pet reaction: happiness +15, loneliness -20, affection +1, sleepiness -5', state)
+  reactions.onPet()
 }
 
 function onPoke(_state: PetState): void {
@@ -40,7 +42,7 @@ function onHold(_state: PetState): void {
   tracePet('hold reaction is not implemented yet')
 }
 
-export function createPetEventDispatcher(state: PetState): PetEventDispatcher {
+export function createPetEventDispatcher(state: PetState, reactions: PetReactionController): PetEventDispatcher {
   return (event) => {
     if (event === PetEvent.NONE) {
       return
@@ -50,7 +52,7 @@ export function createPetEventDispatcher(state: PetState): PetEventDispatcher {
 
     switch (event) {
       case PetEvent.PET:
-        onPet(state)
+        onPet(state, reactions)
         break
       case PetEvent.POKE:
         onPoke(state)

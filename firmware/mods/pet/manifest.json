@@ -7,6 +7,7 @@
     "*": "./mod",
     "./domain/constants": "./domain/constants",
     "./domain/events": "./domain/events",
+    "./domain/reactions": "./domain/reactions",
     "./domain/state": "./domain/state",
     "./domain/types": "./domain/types",
     "./input/gesture-input": "./input/gesture-input",
