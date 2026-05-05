@@ -21,26 +21,26 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 ## Current Focus
 
 - Status: `[ ]`
-- Task: None selected yet
-- Notes: Start with `P0-01` unless the next instruction says otherwise.
+- Task: `P1-01`
+- Notes: P0 is complete. Next likely step is implementing the typed pet state model.
 
 ## Milestones
 
 ### P0: Project Scaffold
 
-- [ ] `P0-01` Add `manifest.json` and minimal `mod.js` that loads as a MOD.
+- [x] `P0-01` Add `manifest.json` and minimal `mod.ts` that loads as a MOD.
   - Acceptance: `npm run mod mods/pet/manifest.json` can target the MOD manifest.
   - Verification: Build or manifest validation attempted from `firmware/`.
-- [ ] `P0-02` Add safe startup behavior.
+- [x] `P0-02` Add safe startup behavior.
   - Acceptance: On launch, Stack-chan enters a normal idle expression without servo surprises.
   - Verification: Code path inspected or run on device.
-- [ ] `P0-03` Add lightweight debug tracing.
+- [x] `P0-03` Add lightweight debug tracing.
   - Acceptance: Important state transitions and input events can be observed with `trace`.
   - Verification: Trace strings are present and scoped to pet MOD behavior.
 
 ### P1: State Model
 
-- [ ] `P1-01` Implement `PetState` in JavaScript.
+- [ ] `P1-01` Implement `PetState` in TypeScript.
   - Acceptance: `happiness`, `loneliness`, `sleepiness`, `affection`, and `lastInteractionAt` exist with spec defaults.
   - Verification: Startup trace prints initial state once.
 - [ ] `P1-02` Implement clamped state updates.
@@ -116,7 +116,8 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 
 ## Implementation Notes
 
-- Keep implementation in JavaScript because existing MODs use `mod.js`.
+- Keep implementation in TypeScript for this MOD. Use `mod.ts`.
+- Avoid firmware path imports inside MOD TypeScript unless the MOD build is confirmed to resolve them; `mcrun` compiles the MOD in isolation.
 - Run commands from `firmware/`.
 - Use `mods/pet/manifest.json` as the MOD manifest path.
 - Touch input API is not confirmed yet. Start `P3-01` by checking existing CoreS3 or renderer/input code.
@@ -126,3 +127,6 @@ Use `plan.md` as the product spec, and update this board whenever a task starts 
 Record completed checks here with date, task ID, command or device action, and result.
 
 - 2026-05-05: Task board created from `plan.md`. No firmware behavior changed.
+- 2026-05-05: `P0-01` Added `manifest.json` and TypeScript `mod.ts`. `npm run mod mods/pet/manifest.json` reached `tsc`, `xsc`, and `xsl`; final failure was opening local `xsbug.app`, not TypeScript compilation.
+- 2026-05-05: `P0-02` Added safe startup behavior by setting `NEUTRAL` emotion only; no servo motion is triggered.
+- 2026-05-05: `P0-03` Added scoped `pet:` startup and emotion traces. `npm run format -- mods/pet` and `npm run lint -- mods/pet` passed.
