@@ -11,7 +11,13 @@
       "modelID": "gpt-realtime-mini"
     },
     "driver": {
-      "type": "none"
+      "type": "scservo",
+      "panId": 1,
+      "tiltId": 2
+    },
+    "serial": {
+      "transmit": 17,
+      "receive": 18
     }
   }
 }
