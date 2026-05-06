@@ -1,11 +1,11 @@
 import Timer from 'timer'
-import { STATE_UPDATE_INTERVAL_MS } from './domain/constants'
-import { createPetEventDispatcher } from './domain/events'
+import { PET_MAIN_LOOP_INTERVAL_MS } from './domain/constants'
+import { createPetEventDispatcher, pollInputs, processEventQueue } from './domain/events'
 import { createPetReactionController } from './domain/reactions'
-import { createInitialPetState, updatePetStateByTime } from './domain/state'
+import { createInitialPetRuntimeState } from './domain/state'
 import type { PetRobot } from './domain/types'
 import { attachScreenGestureInput } from './input/gesture-input'
-import { tracePet, tracePetState } from './support/log'
+import { tracePet, tracePetRuntimeState } from './support/log'
 
 function setSafeStartup(robot: PetRobot): void {
   robot.setEmotion('NEUTRAL')
@@ -16,16 +16,19 @@ export function onRobotCreated(robot: PetRobot): void {
   tracePet('MOD started')
   setSafeStartup(robot)
 
-  const state = createInitialPetState()
+  const state = createInitialPetRuntimeState()
   const reactions = createPetReactionController(robot, state)
-  const dispatchPetEvent = createPetEventDispatcher(state, reactions)
+  const dispatchPetEvent = createPetEventDispatcher(state)
 
-  tracePetState('initial state', state)
+  tracePetRuntimeState('initial state', state)
   attachScreenGestureInput(robot, dispatchPetEvent)
-  reactions.updateExpression()
+  reactions.renderFace()
 
   Timer.repeat(() => {
-    updatePetStateByTime(state)
-    reactions.updateExpression()
-  }, STATE_UPDATE_INTERVAL_MS)
+    pollInputs(state)
+    processEventQueue(state, reactions)
+    reactions.updateReaction()
+    reactions.renderFace()
+    reactions.renderTouchRipple()
+  }, PET_MAIN_LOOP_INTERVAL_MS)
 }

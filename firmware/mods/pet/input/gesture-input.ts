@@ -5,12 +5,13 @@ import {
   PET_SWIPE_MIN_VERTICAL_DOMINANCE,
   PET_SWIPE_START_MAX_Y,
 } from '../domain/constants'
-import { PetEvent, type PetEventDispatcher } from '../domain/events'
-import type { PetRobot } from '../domain/types'
+import type { PetEventDispatcher } from '../domain/events'
+import { EventType, type PetRobot } from '../domain/types'
 import { tracePet } from '../support/log'
 
 type GestureState = {
   tracking: boolean
+  longPressDispatched: boolean
   startX: number
   startY: number
   lastX: number
@@ -21,6 +22,7 @@ type GestureState = {
 function createGestureState(): GestureState {
   return {
     tracking: false,
+    longPressDispatched: false,
     startX: 0,
     startY: 0,
     lastX: 0,
@@ -43,8 +45,22 @@ function isPetSwipe(gesture: GestureState, endX: number, endY: number, endTicks:
   )
 }
 
+function isTap(gesture: GestureState, endX: number, endY: number, endTicks: number): boolean {
+  const dx = endX - gesture.startX
+  const dy = endY - gesture.startY
+  const duration = endTicks - gesture.startTicks
+  return Math.abs(dx) <= 16 && Math.abs(dy) <= 16 && duration <= 350
+}
+
+function isLongPress(gesture: GestureState, ticks: number): boolean {
+  const dx = gesture.lastX - gesture.startX
+  const dy = gesture.lastY - gesture.startY
+  return Math.abs(dx) <= 18 && Math.abs(dy) <= 18 && ticks - gesture.startTicks >= 700
+}
+
 function handleGestureBegan(gesture: GestureState, x: number, y: number, ticks: number): void {
   gesture.tracking = true
+  gesture.longPressDispatched = false
   gesture.startX = x
   gesture.startY = y
   gesture.lastX = x
@@ -53,12 +69,23 @@ function handleGestureBegan(gesture: GestureState, x: number, y: number, ticks: 
   tracePet(`touch began x=${x} y=${y}`)
 }
 
-function handleGestureMoved(gesture: GestureState, x: number, y: number): void {
+function handleGestureMoved(
+  gesture: GestureState,
+  dispatchPetEvent: PetEventDispatcher,
+  x: number,
+  y: number,
+  ticks: number,
+): void {
   if (!gesture.tracking) {
     return
   }
   gesture.lastX = x
   gesture.lastY = y
+  if (!gesture.longPressDispatched && isLongPress(gesture, ticks)) {
+    gesture.longPressDispatched = true
+    tracePet(`long press x=${gesture.startX} y=${gesture.startY}`)
+    dispatchPetEvent(EventType.EVENT_LONG_PRESS)
+  }
 }
 
 function handleGestureEnded(
@@ -75,9 +102,12 @@ function handleGestureEnded(
   gesture.tracking = false
   const endX = Number.isFinite(x) ? x : gesture.lastX
   const endY = Number.isFinite(y) ? y : gesture.lastY
-  if (isPetSwipe(gesture, endX, endY, ticks)) {
-    tracePet(`pet swipe x=${gesture.startX}->${endX} y=${gesture.startY}->${endY}`)
-    dispatchPetEvent(PetEvent.PET)
+  if (!gesture.longPressDispatched && isTap(gesture, endX, endY, ticks)) {
+    tracePet(`tap x=${gesture.startX}->${endX} y=${gesture.startY}->${endY}`)
+    dispatchPetEvent(EventType.EVENT_TAP)
+  } else if (isPetSwipe(gesture, endX, endY, ticks)) {
+    tracePet(`swipe x=${gesture.startX}->${endX} y=${gesture.startY}->${endY}`)
+    dispatchPetEvent(EventType.EVENT_SWIPE)
   } else {
     tracePet(`touch ignored x=${gesture.startX}->${endX} y=${gesture.startY}->${endY}`)
   }
@@ -98,7 +128,7 @@ export function attachScreenGestureInput(robot: PetRobot, dispatchPetEvent: PetE
           handleGestureBegan(gesture, x, y, ticks)
           break
         case 'moved':
-          handleGestureMoved(gesture, x, y)
+          handleGestureMoved(gesture, dispatchPetEvent, x, y, ticks)
           break
         case 'ended':
           handleGestureEnded(gesture, dispatchPetEvent, x, y, ticks)
@@ -126,7 +156,7 @@ export function attachScreenGestureInput(robot: PetRobot, dispatchPetEvent: PetE
 
   touch.onTouchMoved = (x, y, ticks) => {
     previousOnTouchMoved?.(x, y, ticks)
-    handleGestureMoved(gesture, x, y)
+    handleGestureMoved(gesture, dispatchPetEvent, x, y, ticks)
   }
 
   touch.onTouchEnded = (x, y, ticks) => {

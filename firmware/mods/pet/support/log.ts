@@ -1,11 +1,11 @@
-import type { PetState } from '../domain/types'
+import type { PetRuntimeState } from '../domain/types'
 
 export function tracePet(message: string): void {
   trace(`pet: ${message}\n`)
 }
 
-export function tracePetState(label: string, state: PetState): void {
+export function tracePetRuntimeState(label: string, state: PetRuntimeState): void {
   tracePet(
-    `${label}: happiness=${state.happiness}, loneliness=${state.loneliness}, sleepiness=${state.sleepiness}, affection=${state.affection}, lastInteractionAt=${state.lastInteractionAt}`,
+    `${label}: currentReaction=${state.currentReaction.type}, queue=${state.eventQueue.length}, lastInteractionAt=${state.lastInteractionAt}, idleEventFired=${state.idleEventFired}`,
   )
 }

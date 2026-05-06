@@ -1,108 +1,147 @@
-import Timer from 'timer'
 import { tracePet } from '../support/log'
 import {
-  HAPPY_EXPRESSION_MIN,
-  HAPPY_MOTION_STEP_SECONDS,
-  HAPPY_MOTION_YAW,
-  HAPPY_SOUND_DURATION_MS,
-  HAPPY_SOUND_FIRST_HZ,
-  HAPPY_SOUND_SECOND_HZ,
-  HAPPY_SOUND_VOLUME,
-  LONELY_EXPRESSION_MIN,
-  PET_REACTION_DURATION_MS,
-  SLEEPY_EXPRESSION_MIN,
+  REACTION_IDLE_DURATION_MS,
+  REACTION_IDLE_PRIORITY,
+  REACTION_SLEEPY_DURATION_MS,
+  REACTION_SLEEPY_PRIORITY,
+  REACTION_SURPRISED_DURATION_MS,
+  REACTION_SURPRISED_PRIORITY,
 } from './constants'
 import { now } from './state'
-import type { PetEmotion, PetRobot, PetState } from './types'
+import { type PetEmotion, type PetRobot, type PetRuntimeState, type Reaction, ReactionType } from './types'
 
 export type PetReactionController = {
-  onPet: () => void
-  updateExpression: () => void
+  startReaction: (type: ReactionType) => void
+  updateReaction: () => void
+  renderFace: () => void
+  renderTouchRipple: () => void
 }
 
-export function createPetReactionController(robot: PetRobot, state: PetState): PetReactionController {
-  let reactionUntil = 0
-  let currentEmotion: PetEmotion | undefined
-  let reactionTimer: Timer | undefined
-  let happyMotionRunning = false
+export function getReactionPriority(type: ReactionType): number {
+  switch (type) {
+    case ReactionType.REACTION_SURPRISED:
+      return REACTION_SURPRISED_PRIORITY
+    case ReactionType.REACTION_SLEEPY:
+      return REACTION_SLEEPY_PRIORITY
+    case ReactionType.REACTION_IDLE:
+      return REACTION_IDLE_PRIORITY
+  }
+  return REACTION_IDLE_PRIORITY
+}
 
-  function selectExpression(): PetEmotion {
-    if (now() < reactionUntil) {
-      return 'HAPPY'
-    }
-    if (state.sleepiness >= SLEEPY_EXPRESSION_MIN) {
+export function getReactionDuration(type: ReactionType): number {
+  switch (type) {
+    case ReactionType.REACTION_SURPRISED:
+      return REACTION_SURPRISED_DURATION_MS
+    case ReactionType.REACTION_SLEEPY:
+      return REACTION_SLEEPY_DURATION_MS
+    case ReactionType.REACTION_IDLE:
+      return REACTION_IDLE_DURATION_MS
+  }
+  return REACTION_IDLE_DURATION_MS
+}
+
+export function makeReaction(type: ReactionType): Reaction {
+  return {
+    type,
+    priority: getReactionPriority(type),
+    startedAt: now(),
+    duration: getReactionDuration(type),
+  }
+}
+
+function isReactionFinished(reaction: Reaction, timestamp = now()): boolean {
+  return reaction.duration > 0 && timestamp - reaction.startedAt >= reaction.duration
+}
+
+function getSleepyProgress(reaction: Reaction): number {
+  if (reaction.type !== ReactionType.REACTION_SLEEPY || reaction.duration <= 0) {
+    return 0
+  }
+  return Math.max(0, Math.min(1, (now() - reaction.startedAt) / reaction.duration))
+}
+
+function emotionForReaction(reaction: Reaction): PetEmotion {
+  switch (reaction.type) {
+    case ReactionType.REACTION_SURPRISED:
+      return 'NEUTRAL'
+    case ReactionType.REACTION_SLEEPY:
       return 'SLEEPY'
-    }
-    if (state.loneliness >= LONELY_EXPRESSION_MIN) {
-      return 'SAD'
-    }
-    if (state.happiness >= HAPPY_EXPRESSION_MIN) {
-      return 'HAPPY'
-    }
-    return 'NEUTRAL'
+    case ReactionType.REACTION_IDLE:
+      return 'NEUTRAL'
   }
+  return 'NEUTRAL'
+}
 
-  function applyExpression(): void {
-    const nextEmotion = selectExpression()
-    if (nextEmotion === currentEmotion) {
+export function createPetReactionController(robot: PetRobot, state: PetRuntimeState): PetReactionController {
+  let currentEmotion: PetEmotion | undefined
+  let currentMouthOpen: number | undefined
+
+  function applyMouthOpen(value: number): void {
+    if (!robot.setMouthOpen || currentMouthOpen === value) {
       return
     }
-    currentEmotion = nextEmotion
-    robot.setEmotion(nextEmotion)
-    tracePet(`expression set to ${nextEmotion}`)
+    currentMouthOpen = value
+    robot.setMouthOpen(value)
   }
 
-  function scheduleReactionEnd(): void {
-    Timer.clear(reactionTimer)
-    reactionTimer = Timer.set(() => {
-      reactionTimer = undefined
-      applyExpression()
-    }, PET_REACTION_DURATION_MS)
-  }
-
-  async function playHappySound(): Promise<void> {
-    if (!robot.tone) {
-      tracePet('happy sound skipped because tone is not available')
+  function applyEmotion(emotion: PetEmotion): void {
+    if (emotion === currentEmotion) {
       return
     }
-    try {
-      await robot.tone(HAPPY_SOUND_FIRST_HZ, HAPPY_SOUND_DURATION_MS, HAPPY_SOUND_VOLUME)
-      await robot.tone(HAPPY_SOUND_SECOND_HZ, HAPPY_SOUND_DURATION_MS, HAPPY_SOUND_VOLUME)
-    } catch (error) {
-      tracePet(`happy sound failed: ${String(error)}`)
-    }
+    currentEmotion = emotion
+    robot.setEmotion(emotion)
+    tracePet(`expression set to ${emotion}`)
   }
 
-  async function playHappyMotion(): Promise<void> {
-    if (!robot.setPose || happyMotionRunning) {
-      if (!robot.setPose) {
-        tracePet('happy motion skipped because setPose is not available')
-      }
+  function startReaction(type: ReactionType): void {
+    if (type === ReactionType.REACTION_IDLE) {
+      state.currentReaction = makeReaction(type)
+      tracePet('reaction set to REACTION_IDLE')
       return
     }
 
-    happyMotionRunning = true
-    try {
-      await robot.setPose({ rotation: { y: HAPPY_MOTION_YAW, p: 0, r: 0 } }, HAPPY_MOTION_STEP_SECONDS)
-      await robot.setPose({ rotation: { y: -HAPPY_MOTION_YAW, p: 0, r: 0 } }, HAPPY_MOTION_STEP_SECONDS)
-      await robot.setPose({ rotation: { y: 0, p: 0, r: 0 } }, HAPPY_MOTION_STEP_SECONDS)
-    } catch (error) {
-      tracePet(`happy motion failed: ${String(error)}`)
-    } finally {
-      happyMotionRunning = false
+    const current = state.currentReaction
+    const next = makeReaction(type)
+    if (!isReactionFinished(current) && next.priority <= current.priority) {
+      tracePet(`reaction ignored ${type} while ${current.type} is active`)
+      return
+    }
+
+    state.currentReaction = next
+    tracePet(`reaction started ${type}`)
+  }
+
+  function updateReaction(): void {
+    const current = state.currentReaction
+    if (current.type !== ReactionType.REACTION_IDLE && isReactionFinished(current)) {
+      state.currentReaction = makeReaction(ReactionType.REACTION_IDLE)
+      tracePet(`reaction finished ${current.type}`)
     }
   }
 
-  function onPet(): void {
-    reactionUntil = now() + PET_REACTION_DURATION_MS
-    applyExpression()
-    scheduleReactionEnd()
-    void playHappySound()
-    void playHappyMotion()
+  function renderFace(): void {
+    const reaction = state.currentReaction
+    applyEmotion(emotionForReaction(reaction))
+    if (reaction.type === ReactionType.REACTION_SURPRISED) {
+      applyMouthOpen(1)
+      return
+    }
+    if (reaction.type === ReactionType.REACTION_SLEEPY) {
+      applyMouthOpen(0.15 * (1 - getSleepyProgress(reaction)))
+      return
+    }
+    applyMouthOpen(0)
+  }
+
+  function renderTouchRipple(): void {
+    // The Piu face view owns touch ripple drawing. The pet MOD keeps it independent from reactions.
   }
 
   return {
-    onPet,
-    updateExpression: applyExpression,
+    startReaction,
+    updateReaction,
+    renderFace,
+    renderTouchRipple,
   }
 }

@@ -1,68 +1,79 @@
-import { tracePet, tracePetState } from '../support/log'
+import { tracePet } from '../support/log'
+import { IDLE_TIMEOUT_MS } from './constants'
 import type { PetReactionController } from './reactions'
-import { now, updateState } from './state'
-import type { PetState } from './types'
+import { now } from './state'
+import { EventType, type PetRuntimeState, ReactionType } from './types'
 
-export const PetEvent = {
-  NONE: 'NONE',
-  PET: 'PET',
-  POKE: 'POKE',
-  TICKLE: 'TICKLE',
-  HOLD: 'HOLD',
-} as const
+export type PetEventDispatcher = (type: EventType) => void
 
-export type PetEvent = (typeof PetEvent)[keyof typeof PetEvent]
-export type PetEventDispatcher = (event: PetEvent) => void
-
-function tracePetEvent(event: PetEvent): void {
-  tracePet(`EVENT_${event}`)
+export function isUserStimulus(type: EventType): boolean {
+  switch (type) {
+    case EventType.EVENT_TAP:
+    case EventType.EVENT_SWIPE:
+    case EventType.EVENT_LONG_PRESS:
+    case EventType.EVENT_LOUD_SOUND:
+      return true
+    case EventType.EVENT_NONE:
+    case EventType.EVENT_IDLE_TIMEOUT:
+      return false
+  }
+  return false
 }
 
-function onPet(state: PetState, reactions: PetReactionController): void {
-  updateState(state, {
-    happiness: 15,
-    loneliness: -20,
-    affection: 1,
-    sleepiness: -5,
-  })
-  state.lastInteractionAt = now()
-  tracePetState('pet reaction: happiness +15, loneliness -20, affection +1, sleepiness -5', state)
-  reactions.onPet()
+export function pushEvent(state: PetRuntimeState, type: EventType): void {
+  if (type === EventType.EVENT_NONE) {
+    return
+  }
+  state.eventQueue.push({ type, timestamp: now() })
+  tracePet(`event queued ${type}`)
 }
 
-function onPoke(_state: PetState): void {
-  tracePet('poke reaction is not implemented yet')
+export function pollInputs(state: PetRuntimeState): void {
+  if (state.idleEventFired) {
+    return
+  }
+  if (now() - state.lastInteractionAt < IDLE_TIMEOUT_MS) {
+    return
+  }
+  pushEvent(state, EventType.EVENT_IDLE_TIMEOUT)
+  state.idleEventFired = true
 }
 
-function onTickle(_state: PetState): void {
-  tracePet('tickle reaction is not implemented yet')
+function reactionTypeForEvent(type: EventType): ReactionType | undefined {
+  switch (type) {
+    case EventType.EVENT_TAP:
+    case EventType.EVENT_LOUD_SOUND:
+      return ReactionType.REACTION_SURPRISED
+    case EventType.EVENT_SWIPE:
+    case EventType.EVENT_IDLE_TIMEOUT:
+      return ReactionType.REACTION_SLEEPY
+    case EventType.EVENT_NONE:
+    case EventType.EVENT_LONG_PRESS:
+      return undefined
+  }
+  return undefined
 }
 
-function onHold(_state: PetState): void {
-  tracePet('hold reaction is not implemented yet')
-}
-
-export function createPetEventDispatcher(state: PetState, reactions: PetReactionController): PetEventDispatcher {
-  return (event) => {
-    if (event === PetEvent.NONE) {
+export function processEventQueue(state: PetRuntimeState, reactions: PetReactionController): void {
+  while (state.eventQueue.length > 0) {
+    const event = state.eventQueue.shift()
+    if (!event) {
       return
     }
 
-    tracePetEvent(event)
+    tracePet(`event processing ${event.type}`)
+    if (isUserStimulus(event.type)) {
+      state.lastInteractionAt = event.timestamp
+      state.idleEventFired = false
+    }
 
-    switch (event) {
-      case PetEvent.PET:
-        onPet(state, reactions)
-        break
-      case PetEvent.POKE:
-        onPoke(state)
-        break
-      case PetEvent.TICKLE:
-        onTickle(state)
-        break
-      case PetEvent.HOLD:
-        onHold(state)
-        break
+    const reactionType = reactionTypeForEvent(event.type)
+    if (reactionType) {
+      reactions.startReaction(reactionType)
     }
   }
+}
+
+export function createPetEventDispatcher(state: PetRuntimeState): PetEventDispatcher {
+  return (type) => pushEvent(state, type)
 }
