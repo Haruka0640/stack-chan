@@ -1,23 +1,23 @@
+import Timer from 'timer'
+import { SessionController } from './domain/session-controller'
 import { loadSong } from './domain/song-loader'
 import type { JamRobot } from './domain/types'
 import { traceJam } from './support/log'
+import { formatSessionStatus } from './ui/session-display'
 
 const DRAWER_BUTTON_KEY = 'toggleJamSession'
-
-type JamRuntime = {
-  active: boolean
-}
+const SESSION_UPDATE_INTERVAL_MS = 16
 
 function setDrawerState(robot: JamRobot, active: boolean): void {
   robot.application?.setDrawerButtonState?.(DRAWER_BUTTON_KEY, active)
 }
 
-function showStartupStatus(robot: JamRobot, title: string, active: boolean): void {
-  robot.showBalloon?.(`${title}\n${active ? 'Playing' : 'Stopped'}`, {
+function showStatus(robot: JamRobot, text: string): void {
+  robot.showBalloon?.(text, {
     left: 12,
     right: 12,
     bottom: 10,
-    minHeight: 40,
+    minHeight: 58,
   })
 }
 
@@ -25,22 +25,38 @@ export function onRobotCreated(robot: JamRobot): void {
   traceJam('MOD started')
 
   const loadedSong = loadSong()
-  const runtime: JamRuntime = {
-    active: false,
+  const session = new SessionController(loadedSong.config)
+  let lastDisplayText = ''
+
+  const updateDisplay = (force = false) => {
+    const text = formatSessionStatus(session.song, session.state)
+    if (!force && text === lastDisplayText) return
+    lastDisplayText = text
+    showStatus(robot, text)
   }
 
-  showStartupStatus(robot, loadedSong.config.song.title, runtime.active)
+  updateDisplay(true)
+
+  Timer.repeat(() => {
+    const now = Date.now()
+    const wasActive = session.state.active
+    session.update(now)
+    if (wasActive !== session.state.active) {
+      setDrawerState(robot, session.state.active)
+      updateDisplay(true)
+    }
+  }, SESSION_UPDATE_INTERVAL_MS)
 
   robot.application?.addDrawerButton?.({
     key: DRAWER_BUTTON_KEY,
     label: 'Session',
     kind: 'toggle',
-    initialState: runtime.active,
+    initialState: session.state.active,
     callback: () => {
-      runtime.active = !runtime.active
-      setDrawerState(robot, runtime.active)
-      showStartupStatus(robot, loadedSong.config.song.title, runtime.active)
-      traceJam(`session ${runtime.active ? 'started' : 'stopped'}`)
+      const active = session.toggle(Date.now())
+      setDrawerState(robot, active)
+      updateDisplay(true)
+      traceJam(`session ${active ? 'started' : 'stopped'}`)
     },
   })
 }

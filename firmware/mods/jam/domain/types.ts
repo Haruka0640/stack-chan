@@ -70,6 +70,18 @@ export type SessionState = {
   lastArpAt: number
 }
 
+export type SongPosition = {
+  elapsedMs: number
+  songElapsedMs: number
+  currentBar: number
+  currentBeat: number
+  absoluteBarIndex: number
+  absoluteBeatIndex: number
+  barProgressMs: number
+  beatProgressMs: number
+  completed: boolean
+}
+
 export type DrawerButtonRegistration = {
   key: string
   label: string
