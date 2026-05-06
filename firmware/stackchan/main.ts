@@ -141,6 +141,7 @@ function createRobot() {
     tone,
     microphone,
     led,
+    posePolling: config.posePolling !== false,
   } as ConstructorParameters<typeof Robot>[0])
 }
 

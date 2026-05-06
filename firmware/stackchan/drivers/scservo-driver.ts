@@ -1,40 +1,77 @@
 import SCServo from 'scservo'
-import type Timer from 'timer'
 import type { Maybe, Rotation } from 'stackchan-util'
+import type Timer from 'timer'
 
 type SCServoDriverProps = {
   panId: number
   tiltId: number
+  enablePan?: boolean
+  enableTilt?: boolean
+  traceMotion?: boolean
+  waitForAck?: boolean
 }
 
 export class SCServoDriver {
   _pan: SCServo
   _tilt: SCServo
   _handler: ReturnType<typeof Timer.repeat>
+  #enablePan: boolean
+  #enableTilt: boolean
+  #traceMotion: boolean
+  #waitForAck: boolean
+
   constructor(param: SCServoDriverProps) {
     this._pan = new SCServo({ id: param.panId })
     this._tilt = new SCServo({ id: param.tiltId })
+    this.#enablePan = param.enablePan ?? true
+    this.#enableTilt = param.enableTilt ?? true
+    this.#traceMotion = param.traceMotion ?? true
+    this.#waitForAck = param.waitForAck ?? true
   }
 
   async setTorque(torque: boolean): Promise<void> {
-    await Promise.all([this._pan.setTorque(torque), this._tilt.setTorque(torque)])
+    if (!this.#waitForAck) {
+      if (this.#enablePan) this._pan.setTorqueNoWait(torque)
+      if (this.#enableTilt) this._tilt.setTorqueNoWait(torque)
+      return
+    }
+    const commands: Promise<unknown>[] = []
+    if (this.#enablePan) commands.push(this._pan.setTorque(torque))
+    if (this.#enableTilt) commands.push(this._tilt.setTorque(torque))
+    await Promise.all(commands)
   }
 
   async applyRotation(ori: Rotation, time = 0.5): Promise<void> {
     const panAngle = 100 - (ori.y * 180) / Math.PI
     const tiltAngle = 100 - Math.min(Math.max((ori.p * 180) / Math.PI, -25), 10)
-    trace(`applying (${ori.y}, ${ori.p}) => (${panAngle}, ${tiltAngle})\n`)
-    if (time === 0) {
-      await Promise.all([this._pan.setAngle(panAngle), this._tilt.setAngle(tiltAngle)])
-    } else {
-      await Promise.all([
-        this._pan.setAngleInTime(panAngle, time * 1000),
-        this._tilt.setAngleInTime(tiltAngle, time * 1000),
-      ])
+    if (this.#traceMotion) {
+      trace(`applying (${ori.y}, ${ori.p}) => (${panAngle}, ${tiltAngle})\n`)
     }
+    if (!this.#waitForAck) {
+      if (time === 0) {
+        if (this.#enablePan) this._pan.setAngleNoWait(panAngle)
+        if (this.#enableTilt) this._tilt.setAngleNoWait(tiltAngle)
+      } else {
+        if (this.#enablePan) this._pan.setAngleInTimeNoWait(panAngle, time * 1000)
+        if (this.#enableTilt) this._tilt.setAngleInTimeNoWait(tiltAngle, time * 1000)
+      }
+      return
+    }
+    const commands: Promise<unknown>[] = []
+    if (time === 0) {
+      if (this.#enablePan) commands.push(this._pan.setAngle(panAngle))
+      if (this.#enableTilt) commands.push(this._tilt.setAngle(tiltAngle))
+    } else {
+      if (this.#enablePan) commands.push(this._pan.setAngleInTime(panAngle, time * 1000))
+      if (this.#enableTilt) commands.push(this._tilt.setAngleInTime(tiltAngle, time * 1000))
+    }
+    await Promise.all(commands)
   }
   async getRotation(): Promise<Maybe<Rotation>> {
-    const [p1, p2] = await Promise.allSettled([this._pan.readStatus(), this._tilt.readStatus()])
+    const [p1, p2] = await Promise.allSettled([
+      this.#enablePan ? this._pan.readStatus() : Promise.resolve({ success: true, value: { angle: 100 } } as const),
+      this.#enableTilt ? this._tilt.readStatus() : Promise.resolve({ success: true, value: { angle: 100 } } as const),
+    ])
     if (p1.status !== 'fulfilled' || p2.status !== 'fulfilled') {
       return
     }

@@ -1,13 +1,15 @@
 import { traceJam } from '../support/log'
 import { arpIntervalToMs, getChordTone, getPattern, midiNoteToHz, selectPatternName, velocityToVolume } from './arp'
 import { getCurrentChord, getCurrentEnergyRule, getCurrentSectionIndex } from './harmony'
-import { calculateSongPosition, getBeatDurationMs } from './timing'
+import { calculateSongPosition } from './timing'
 import { JamTonePlayer } from './tone-player'
-import type { ArpPattern, EnergyRule, SessionState, SongConfig } from './types'
+import type { ArpPattern, EnergyRule, JamRobot, SessionState, SongConfig } from './types'
 
 const DEBUG_TIMING = true
 const DEBUG_LOG_LIMIT = 48
-const FORCE_EIGHTH_NOTE_MODE = true
+const POSE_CUE_LOG_ENABLED = true
+const POSE_OUTPUT_ENABLED = true
+const POSE_MOVE_TIME_MS = 220
 
 type ArpRuntime = {
   pattern: ArpPattern | null
@@ -15,18 +17,28 @@ type ArpRuntime = {
   lastPatternSlot: number
   lastStepSlot: number
   lastGridBeat: number
-  lastEighthSlot: number
+  lastPoseBeat: number
 }
 
 export class SessionController {
   readonly state: SessionState
   #arp: ArpRuntime
   #song: SongConfig
+  #robot: JamRobot
   #tonePlayer: JamTonePlayer
+  #poseBusyUntil = 0
   #debugLogCount = 0
+  #pose = {
+    rotation: {
+      y: 0,
+      p: 0,
+      r: 0,
+    },
+  }
 
-  constructor(song: SongConfig) {
+  constructor(song: SongConfig, robot: JamRobot) {
     this.#song = song
+    this.#robot = robot
     this.#tonePlayer = new JamTonePlayer()
     this.state = {
       active: false,
@@ -44,7 +56,7 @@ export class SessionController {
       lastPatternSlot: -1,
       lastStepSlot: -1,
       lastGridBeat: -1,
-      lastEighthSlot: -1,
+      lastPoseBeat: -1,
     }
   }
 
@@ -66,7 +78,11 @@ export class SessionController {
     this.#arp.lastPatternSlot = -1
     this.#arp.lastStepSlot = -1
     this.#arp.lastGridBeat = -1
-    this.#arp.lastEighthSlot = -1
+    this.#arp.lastPoseBeat = -1
+    this.#poseBusyUntil = 0
+    this.#robot.setPosePolling?.(false)
+    const torque = this.#robot.setTorque?.(true)
+    torque?.catch((error) => traceJam(`set torque failed: ${String(error)}`))
     this.#debugLogCount = 0
     traceJam('session controller started')
   }
@@ -75,6 +91,8 @@ export class SessionController {
     this.state.active = false
     this.#arp.pattern = null
     this.#tonePlayer.stop()
+    this.#poseBusyUntil = 0
+    this.applyPoseCue(0, Date.now())
     traceJam('session controller stopped')
   }
 
@@ -116,10 +134,7 @@ export class SessionController {
     }
 
     this.debugGrid(position.absoluteBeatIndex, position.elapsedMs, rule, intervalMs)
-    if (FORCE_EIGHTH_NOTE_MODE) {
-      this.playEighthNote(now, position.elapsedMs)
-      return
-    }
+    this.emitPoseCue(position.absoluteBeatIndex, position.elapsedMs)
     this.playCurrentStep(now, rule, position.elapsedMs)
   }
 
@@ -202,42 +217,35 @@ export class SessionController {
     this.#arp.lastStepSlot = stepSlot
   }
 
-  private playEighthNote(now: number, elapsedMs: number): void {
-    const eighthDurationMs = getBeatDurationMs(this.#song.song) / 2
-    const eighthSlot = Math.floor(elapsedMs / eighthDurationMs)
-    if (eighthSlot === this.#arp.lastEighthSlot) return
+  private emitPoseCue(absoluteBeatIndex: number, elapsedMs: number): void {
+    if (!POSE_CUE_LOG_ENABLED || absoluteBeatIndex === this.#arp.lastPoseBeat) return
+    this.#arp.lastPoseBeat = absoluteBeatIndex
+    const beatInBar = absoluteBeatIndex % Math.max(1, this.#song.song.timeSignatureNumerator)
+    const yawCentirad = beatInBar === 0 ? -8 : beatInBar === 2 ? 8 : 0
+    this.applyPoseCue(yawCentirad, this.state.startedAt + elapsedMs)
+    if (!this.canDebugTiming()) return
+    trace(
+      'jam:pose beat=',
+      beatInBar + 1,
+      ' absBeat=',
+      absoluteBeatIndex,
+      ' elapsed=',
+      Math.round(elapsedMs),
+      ' yawCentirad=',
+      yawCentirad,
+      '\n',
+    )
+  }
 
-    const dueElapsedMs = eighthSlot * eighthDurationMs
-    const dueAt = this.state.startedAt + dueElapsedMs
-    const lateMs = now - dueAt
-    const chord = getCurrentChord(this.#song, this.state.currentBar)
-    const note = chord.notes[0] ?? 60
-    const hz = midiNoteToHz(note)
-    const volume = velocityToVolume(this.#song.settings.defaultVelocity)
-    const gateMs = Math.min(90, eighthDurationMs * 0.5)
-    if (this.canDebugTiming()) {
-      trace(
-        'jam:eighth slot=',
-        eighthSlot,
-        ' due=',
-        Math.round(dueElapsedMs),
-        ' now=',
-        Math.round(elapsedMs),
-        ' late=',
-        Math.round(lateMs),
-        ' bar=',
-        this.state.currentBar,
-        ' beat=',
-        this.state.currentBeat,
-        ' note=',
-        note,
-        ' hz=',
-        Math.round(hz),
-        '\n',
-      )
-    }
-    this.logToneResult(elapsedMs, this.#tonePlayer.play(now, hz, gateMs, volume))
-    this.#arp.lastEighthSlot = eighthSlot
+  private applyPoseCue(yawCentirad: number, now: number): void {
+    if (!POSE_OUTPUT_ENABLED || !this.#robot.setPose || now < this.#poseBusyUntil) return
+    this.#pose.rotation.y = yawCentirad / 100
+    this.#pose.rotation.p = 0
+    this.#pose.rotation.r = 0
+    this.#poseBusyUntil = now + POSE_MOVE_TIME_MS
+    this.#robot.setPose(this.#pose, POSE_MOVE_TIME_MS / 1000).catch((error) => {
+      traceJam(`pose failed: ${String(error)}`)
+    })
   }
 
   private logToneResult(elapsedMs: number, result: { played: boolean; busyUntil: number }): void {

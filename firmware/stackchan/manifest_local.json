@@ -10,10 +10,14 @@
       "type": "openAIRealtime",
       "modelID": "gpt-realtime-mini"
     },
+    "posePolling": false,
     "driver": {
-      "type": "none",
+      "type": "scservo",
       "panId": 1,
-      "tiltId": 2
+      "tiltId": 2,
+      "enableTilt": false,
+      "traceMotion": false,
+      "waitForAck": false
     },
     "serial": {
       "port": 1,

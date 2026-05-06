@@ -112,4 +112,16 @@ export type JamRobot = {
   ) => void
   hideBalloon?: () => void
   tone?: (hz: number, duration: number, volume?: number) => Promise<void>
+  setPosePolling?: (enabled: boolean) => void
+  setTorque?: (torque: boolean) => Promise<void>
+  setPose?: (
+    pose: {
+      rotation: {
+        y: number
+        p: number
+        r: number
+      }
+    },
+    time?: number,
+  ) => Promise<void>
 }

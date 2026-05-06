@@ -25,7 +25,7 @@ export function onRobotCreated(robot: JamRobot): void {
   traceJam('MOD started')
 
   const loadedSong = loadSong()
-  const session = new SessionController(loadedSong.config)
+  const session = new SessionController(loadedSong.config, robot)
   let lastDisplayText = ''
 
   const updateDisplay = (force = false) => {

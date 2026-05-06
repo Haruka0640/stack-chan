@@ -1,9 +1,9 @@
 import Serial from 'embedded:io/serial'
 import config from 'mc/config'
-import Timer from 'timer'
+import { PayloadBuffer } from 'payload-buffer'
 
 import SingleWaitSlot from 'single-wait-slot'
-import { PayloadBuffer } from 'payload-buffer'
+import Timer from 'timer'
 
 type Maybe<T> =
   | {
@@ -204,6 +204,13 @@ class SCServo {
   }
 
   async #dispatchCommand(command: Command, address: Address, ...values: number[]): Promise<Uint8Array | undefined> {
+    this.#writeCommand(command, address, ...values)
+    return this.#waitSlot.wait(40, () => {
+      trace('timeout.\n')
+    })
+  }
+
+  #writeCommand(command: Command, address: Address, ...values: number[]): void {
     this.#txBuf[0] = 0xff
     this.#txBuf[1] = 0xff
     this.#txBuf[2] = this.#id
@@ -225,9 +232,6 @@ class SCServo {
     } finally {
       packetHandler.format = originalFormat
     }
-    return this.#waitSlot.wait(40, () => {
-      trace('timeout.\n')
-    })
   }
 
   async #sendCommand(command: Command, address: Address, ...values: number[]): Promise<Uint8Array | undefined> {
@@ -237,6 +241,16 @@ class SCServo {
       () => undefined,
     )
     return run
+  }
+
+  #sendCommandNoWait(command: Command, address: Address, ...values: number[]): void {
+    const run = this.#queueTail.then(() => {
+      this.#writeCommand(command, address, ...values)
+    })
+    this.#queueTail = run.then(
+      () => undefined,
+      () => undefined,
+    )
   }
 
   async #lock(): Promise<unknown> {
@@ -332,6 +346,11 @@ class SCServo {
     return this.#sendCommand(COMMAND.WRITE, ADDRESS.GOAL_POSITION, ...le(a))
   }
 
+  setAngleNoWait(angle: number): void {
+    const a = Math.floor(clamp(((angle + this.#offset) * 1024) / 200, 0, 0x03ff))
+    this.#sendCommandNoWait(COMMAND.WRITE, ADDRESS.GOAL_POSITION, ...le(a))
+  }
+
   /**
    * sets angle within goal time
    * @param angle angle(degree)
@@ -345,6 +364,11 @@ class SCServo {
     return res
   }
 
+  setAngleInTimeNoWait(angle: number, goalTime: number): void {
+    const a = Math.floor(clamp(((angle + this.#offset) * 1024) / 200, 0, 0x03ff))
+    this.#sendCommandNoWait(COMMAND.WRITE, ADDRESS.GOAL_POSITION, ...le(a), ...le(goalTime))
+  }
+
   /**
    * sets torque
    * @param enable enable
@@ -352,6 +376,10 @@ class SCServo {
    */
   async setTorque(enable: boolean): Promise<unknown> {
     return this.#sendCommand(COMMAND.WRITE, ADDRESS.TORQUE_ENABLE, Number(enable))
+  }
+
+  setTorqueNoWait(enable: boolean): void {
+    this.#sendCommandNoWait(COMMAND.WRITE, ADDRESS.TORQUE_ENABLE, Number(enable))
   }
 
   /**

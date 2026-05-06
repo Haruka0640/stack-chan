@@ -26,7 +26,7 @@
 
 - Status: `[ ]`
 - Task: `JAM-P6-04`
-- Notes: MVP 実装と CoreS3 ターゲットビルドは完了。残りは CoreS3 実機で drawer 操作、表示、発音密度を確認する。
+- Notes: SCServo の read と ACK 待ちを避け、pan yaw の fire-and-forget pose 書き込みに変更。残りは実機で timeout と late の相関確認。
 
 ## Implementation Plan
 
@@ -178,6 +178,18 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
   - Acceptance: 起動、Start、Stop、曲データ読み込み、bar/beat 表示、energy による密度変化、コード構成音のみの発音を確認する。
   - Verification: 実機メモを `Verification Log` に追記する。
 
+### JAM-P7: Beat-Synced Neck Motion
+
+- [x] `JAM-P7-01` サーボの読み取りポーリングを止めるホスト設定を追加する。
+  - Acceptance: `posePolling = false` で `Robot.updatePose()` の `getRotation()` が停止し、顔表示は止まらない。
+  - Verification: `manifest_local.json` で無効化し、CoreS3 build が通る。
+- [x] `JAM-P7-02` JAM から拍に同期した pose 書き込みを行う。
+  - Acceptance: `jam:pose` と同じ beat 1/2/3/4 で yaw `-0.08 / 0 / 0.08 / 0` を `setPose()` へ送る。
+  - Verification: 実機で `timeout.` と `jam:step late` の相関を見る。
+- [x] `JAM-P7-03` SCServo の ACK 待ちと tilt 書き込みを JAM 検証から外す。
+  - Acceptance: `waitForAck = false` と `enableTilt = false` で pose 書き込みが音楽タイマーを 40ms 単位でブロックしない。
+  - Verification: CoreS3 build が通り、実機で `timeout.` が止まることを見る。
+
 ## Implementation Notes
 
 - `pet` MOD は参照対象から外す。例外として、MOD manifest の書き方、`Timer.repeat()` の使い方、`robot.application.addDrawerButton()` の使い方だけはコードベース上の既存パターンとして参考にできる。
@@ -216,3 +228,7 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 - 2026-05-06: ズレの切り分け用 timing debug log を追加。`SessionController` に最大80行の `grid`, `step`, `tone ok`, `tone skip` ログを実装し、拍グリッド、予定時刻との差分、AudioOut busy 状態を確認できるようにした。`npx biome check mods/jam` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
 - 2026-05-06: 切り分け用に `FORCE_EIGHTH_NOTE_MODE` を追加し、有効化。energy/pattern を無視して現在コードのルートを常に8分音符グリッドで鳴らす。ログは `jam:eighth` と `jam:tone ok/skip` を出す。`npx biome check mods/jam` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
 - 2026-05-06: 頻発する `timeout.` はサーボドライバ通信由来と判断。JAM はサーボを使わないため、切り分けとして `stackchan/manifest_local.json` の `driver.type` を `none` に変更し、サーボ通信タイムアウトを音楽タイミングから外した。`npx biome check mods/jam stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
+- 2026-05-06: 首振り機能の段階実装方針を `plan/v0/plan.md` に追加。Stage 1 としてサーボには触らず、拍グリッドに同期した `jam:pose` cue ログを実装。4拍パターンは yaw centirad `-8, 0, 8, 0`。実サーボ出力は `timeout.` 再発を避けるため後続で検証する。
+- 2026-05-06: `JAM-P7-01`/`JAM-P7-02` ホストに `posePolling` 設定と `Robot.setPosePolling()` を追加し、`posePolling = false` では `updatePose()` の `getRotation()` を止めるようにした。JAM は `SessionController` から `setPosePolling(false)`, `setTorque(true)`, beat sync の `setPose()` を呼び、yaw `-0.08 / 0 / 0.08 / 0` を 220ms で送る。`manifest_local.json` は `driver.type = "scservo"` と `posePolling = false` に変更。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
+- 2026-05-06: `JAM-P7-03` 実機ログで `setPose()` 後の `timeout.` と `jam:eighth late=200..300ms` が相関していたため、SCServo driver に `waitForAck`, `enablePan`, `enableTilt`, `traceMotion` option を追加。`waitForAck = false` では ACK を待たない fire-and-forget 書き込みを使い、JAM 検証設定では `enableTilt = false`, `traceMotion = false` とした。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
+- 2026-05-06: 切り分け用の8分音符固定モードを解除。`SessionController` から `FORCE_EIGHTH_NOTE_MODE` と `playEighthNote()` 分岐を削除し、通常どおり `energy_rules` と `arp_patterns` に基づく `playCurrentStep()` を使うように戻した。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
