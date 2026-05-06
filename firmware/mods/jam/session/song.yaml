@@ -33,6 +33,8 @@ sections:
 chords:
   Am:
     notes: [57, 60, 64, 69]
+  Dm:
+    notes: [50, 53, 57, 62]
   F:
     notes: [53, 57, 60, 65]
   C:
@@ -46,10 +48,10 @@ progression:
     chord: "Am"
   - start_bar: 2
     length_bars: 1
-    chord: "F"
+    chord: "Dm"
   - start_bar: 3
     length_bars: 1
-    chord: "C"
+    chord: "Am"
   - start_bar: 4
     length_bars: 1
     chord: "G"

@@ -94,6 +94,7 @@ export type JamApplication = {
   addDrawerButton?: (button: DrawerButtonRegistration) => void
   removeDrawerButton?: (key: string) => void
   setDrawerButtonState?: (key: string, active: boolean) => void
+  closeDrawer?: () => void
 }
 
 export type JamRobot = {

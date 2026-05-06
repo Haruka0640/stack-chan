@@ -1,4 +1,3 @@
-import type { Application as PiuApplication, Container as PiuContainer, Content as PiuContent } from 'piu/MC'
 import type { DrawerButtonSpec } from 'drawer'
 import type { FaceContext } from 'face-context'
 import {
@@ -8,6 +7,7 @@ import {
   type FaceViewParams,
   type FaceViewTemplateCtor,
 } from 'face-view'
+import type { Application as PiuApplication, Container as PiuContainer, Content as PiuContent } from 'piu/MC'
 
 export type AppControllerParams = FaceViewParams
 
@@ -17,6 +17,7 @@ type DrawerControllerHost = {
     addButton?: (button: DrawerButtonSpec) => void
     removeButton?: (key: string) => void
     setButtonState?: (key: string, active: boolean) => void
+    closeDrawer?: () => void
   }
 }
 
@@ -124,6 +125,7 @@ export class AppController extends Behavior {
       addButton: (button) => this.addDrawerButton(button),
       removeButton: (key) => this.removeDrawerButton(key),
       setButtonState: (key, active) => this.setDrawerButtonState(key, active),
+      closeDrawer: () => this.closeDrawer(),
     }
   }
 }

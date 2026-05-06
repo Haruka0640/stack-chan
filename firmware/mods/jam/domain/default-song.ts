@@ -3,7 +3,7 @@ import type { SongConfig } from './types'
 export const DEFAULT_SONG: SongConfig = {
   song: {
     title: 'Loop Rap Session',
-    bpm: 90,
+    bpm: 120,
     timeSignatureNumerator: 4,
     timeSignatureDenominator: 4,
     totalBars: 24,
@@ -17,21 +17,22 @@ export const DEFAULT_SONG: SongConfig = {
     loop: true,
   },
   sections: [
-    { name: 'intro', startBar: 1, endBar: 4, energy: 20 },
-    { name: 'verse', startBar: 5, endBar: 12, energy: 40 },
-    { name: 'build', startBar: 13, endBar: 16, energy: 65 },
-    { name: 'climax', startBar: 17, endBar: 24, energy: 90 },
+    { name: 'intro', startBar: 1, endBar: 6, energy: 20 },
+    { name: 'verse', startBar: 7, endBar: 13, energy: 40 },
+    { name: 'build', startBar: 14, endBar: 18, energy: 65 },
+    { name: 'climax', startBar: 19, endBar: 26, energy: 90 },
   ],
   chords: {
     Am: { name: 'Am', notes: [57, 60, 64, 69], noteCount: 4 },
+    Dm: { name: 'Dm', notes: [50, 53, 57, 62], noteCount: 4 },
     F: { name: 'F', notes: [53, 57, 60, 65], noteCount: 4 },
     C: { name: 'C', notes: [60, 64, 67, 72], noteCount: 4 },
     G: { name: 'G', notes: [55, 59, 62, 67], noteCount: 4 },
   },
   progression: [
     { startBar: 1, lengthBars: 1, chordName: 'Am' },
-    { startBar: 2, lengthBars: 1, chordName: 'F' },
-    { startBar: 3, lengthBars: 1, chordName: 'C' },
+    { startBar: 2, lengthBars: 1, chordName: 'Dm' },
+    { startBar: 3, lengthBars: 1, chordName: 'Am' },
     { startBar: 4, lengthBars: 1, chordName: 'G' },
   ],
   arpPatterns: {

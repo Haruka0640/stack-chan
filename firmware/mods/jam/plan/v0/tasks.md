@@ -162,6 +162,12 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 - [x] `JAM-P5-04` 起動時/停止時の表示を整える。
   - Acceptance: 停止中は曲名と停止状態、再生中は現在状態が見える。
   - Verification: start/stop を繰り返して表示が重複しない。
+- [x] `JAM-P5-05` 開始前のカウントイン表示を追加する。
+  - Acceptance: drawer start 後、BPM に合わせて `1,2,3,4` を吹き出し表示し、その次の拍で演奏開始する。
+  - Verification: カウント中の drawer stop でキャンセルできる。
+- [x] `JAM-P5-06` セッション開始時に drawer を閉じる。
+  - Acceptance: drawer の `Session` を押したら、カウントイン開始と同時に drawer が閉じる。
+  - Verification: カウントイン吹き出しが drawer に隠れず見える。
 
 ### JAM-P6: Verification
 
@@ -232,3 +238,5 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 - 2026-05-06: `JAM-P7-01`/`JAM-P7-02` ホストに `posePolling` 設定と `Robot.setPosePolling()` を追加し、`posePolling = false` では `updatePose()` の `getRotation()` を止めるようにした。JAM は `SessionController` から `setPosePolling(false)`, `setTorque(true)`, beat sync の `setPose()` を呼び、yaw `-0.08 / 0 / 0.08 / 0` を 220ms で送る。`manifest_local.json` は `driver.type = "scservo"` と `posePolling = false` に変更。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
 - 2026-05-06: `JAM-P7-03` 実機ログで `setPose()` 後の `timeout.` と `jam:eighth late=200..300ms` が相関していたため、SCServo driver に `waitForAck`, `enablePan`, `enableTilt`, `traceMotion` option を追加。`waitForAck = false` では ACK を待たない fire-and-forget 書き込みを使い、JAM 検証設定では `enableTilt = false`, `traceMotion = false` とした。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
 - 2026-05-06: 切り分け用の8分音符固定モードを解除。`SessionController` から `FORCE_EIGHTH_NOTE_MODE` と `playEighthNote()` 分岐を削除し、通常どおり `energy_rules` と `arp_patterns` に基づく `playCurrentStep()` を使うように戻した。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
+- 2026-05-06: `JAM-P5-05` drawer start 後に BPM 同期の4カウント吹き出し表示を追加。`1,2,3,4` を 1 拍ずつ表示し、次の拍で `SessionController.start()` する。カウント中に drawer stop するとキャンセルして停止表示に戻る。
+- 2026-05-06: `JAM-P5-06` host の drawer controller に `closeDrawer()` を公開し、JAM のカウントイン開始時に drawer を閉じるようにした。

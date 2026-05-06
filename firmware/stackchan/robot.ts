@@ -66,6 +66,7 @@ type DrawerButtonRegistry = {
   removeDrawerButton: (key: string) => void
   clearDrawerButtons: () => void
   setDrawerButtonState: (key: string, active: boolean) => void
+  closeDrawer: () => void
 }
 
 export type Button = {
@@ -200,6 +201,7 @@ export class Robot {
       removeDrawerButton: (key) => this.removeDrawerButton(key),
       clearDrawerButtons: () => this.clearDrawerButtons(),
       setDrawerButtonState: (key, active) => this.setDrawerButtonState(key, active),
+      closeDrawer: () => this.closeDrawer(),
     }
   }
 
@@ -470,6 +472,7 @@ export class Robot {
         addButton?: (button: unknown) => void
         removeButton?: (key: string) => void
         setButtonState?: (key: string, active: boolean) => void
+        closeDrawer?: () => void
       }
     | undefined {
     const app = this.#renderer?.application as { drawerController?: unknown } | undefined
@@ -479,6 +482,7 @@ export class Robot {
           addButton?: (button: unknown) => void
           removeButton?: (key: string) => void
           setButtonState?: (key: string, active: boolean) => void
+          closeDrawer?: () => void
         }
       | undefined
   }
@@ -543,6 +547,11 @@ export class Robot {
   private setDrawerButtonState(key: string, active: boolean): void {
     const controller = this.getDrawerController()
     controller?.setButtonState?.(key, active)
+  }
+
+  private closeDrawer(): void {
+    const controller = this.getDrawerController()
+    controller?.closeDrawer?.()
   }
 
   pause() {
