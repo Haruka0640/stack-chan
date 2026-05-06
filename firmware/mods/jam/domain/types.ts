@@ -7,56 +7,12 @@ export type SongInfo = {
 }
 
 export type SongSettings = {
-  rootOctave: number
-  defaultVelocity: number
-  toneWaveform: string
-  swing: number
-  randomSeed: number
   loop: boolean
-}
-
-export type SongSection = {
-  name: string
-  startBar: number
-  endBar: number
-  energy: number
-}
-
-export type ChordDef = {
-  name: string
-  notes: number[]
-  noteCount: number
-}
-
-export type ChordEvent = {
-  startBar: number
-  lengthBars: number
-  chordName: string
-}
-
-export type ArpPattern = {
-  name: string
-  steps: number[]
-  stepCount: number
-  noteLengthMs: number
-  gateMs: number
-}
-
-export type EnergyRule = {
-  minEnergy: number
-  maxEnergy: number
-  arpInterval: string
-  patterns: string[]
 }
 
 export type SongConfig = {
   song: SongInfo
   settings: SongSettings
-  sections: SongSection[]
-  chords: Record<string, ChordDef>
-  progression: ChordEvent[]
-  arpPatterns: Record<string, ArpPattern>
-  energyRules: EnergyRule[]
 }
 
 export type SessionState = {
@@ -64,10 +20,6 @@ export type SessionState = {
   startedAt: number
   currentBar: number
   currentBeat: number
-  currentSectionIndex: number
-  currentChordName: string
-  currentEnergy: number
-  lastArpAt: number
 }
 
 export type SongPosition = {

@@ -45,19 +45,17 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 - `mods/jam/mod.ts`
   - `onRobotCreated(robot)`、起動/停止 UI、`Timer.repeat()` によるメイン更新を持つ。
 - `mods/jam/domain/types.ts`
-  - `SongInfo`, `SongSection`, `ChordDef`, `ChordEvent`, `ArpPattern`, `EnergyRule`, `SessionState`, `SongConfig`, `JamRobot` を定義する。
+  - WAV ループ再生に必要な `SongInfo`, `SessionState`, `SongConfig`, `JamRobot` を定義する。
 - `mods/jam/domain/default-song.ts`
-  - `/session/song.yaml` が読めない場合の内蔵サンプル YAML または正規化済み `SongConfig`。
+  - WAV ループ再生用の BPM、拍子、ループ長、表示タイトルを持つ。
 - `mods/jam/domain/song-loader.ts`
-  - ファイル読み込み、YAML パース、正規化、バリデーションを担当する。
+  - MVP では正規化済み `DEFAULT_SONG` を返す。
 - `mods/jam/domain/timing.ts`
   - BPM、拍子、経過 ms から現在 bar/beat/tick を計算する。
-- `mods/jam/domain/harmony.ts`
-  - 現在小節に対応する section/chord/energy rule を引く。
-- `mods/jam/domain/arp.ts`
-  - energy rule と arp pattern から次に鳴らす MIDI note を決め、Hz に変換する。
+- `mods/jam/domain/loop-player.ts`
+  - MAUD 化済みループ素材を `AudioOut.Samples` で再生する。
 - `mods/jam/domain/session-controller.ts`
-  - start/stop/update、loop 処理、状態更新、tone 発火をまとめる。
+  - start/stop/update、WAV ループ再生、首振り cue をまとめる。
 - `mods/jam/ui/session-display.ts`
   - 表示テキスト生成と表示更新の間引きを担当する。
 - `mods/jam/support/log.ts`
@@ -196,6 +194,18 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
   - Acceptance: `waitForAck = false` と `enableTilt = false` で pose 書き込みが音楽タイマーを 40ms 単位でブロックしない。
   - Verification: CoreS3 build が通り、実機で `timeout.` が止まることを見る。
 
+### JAM-P8: Timing Drift Isolation
+
+- [x] `JAM-P8-01` 詳細タイミングログを停止する。
+  - Acceptance: `jam:grid`, `jam:step`, `jam:pose`, `jam:tone` の連続 trace が通常実行時に出ない。
+  - Verification: 実機でログ負荷なしの音ズレを確認する。
+- [x] `JAM-P8-02` 首振りを完全停止して音だけで確認する。
+  - Acceptance: pose cue と `setPose()` を無効化し、音声再生だけを残す。
+  - Verification: 首振りなしで音ズレが残るか確認する。
+- [x] `JAM-P8-03` プリレンダー audio 実験を実装する。
+  - Acceptance: JS Timer 発火ではなく AudioOut resource loop を鳴らし、首振りは別に動かす。
+  - Verification: `loop1.wav` を resource 化して CoreS3 MOD build が通る。
+
 ## Implementation Notes
 
 - `pet` MOD は参照対象から外す。例外として、MOD manifest の書き方、`Timer.repeat()` の使い方、`robot.application.addDrawerButton()` の使い方だけはコードベース上の既存パターンとして参考にできる。
@@ -240,3 +250,8 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 - 2026-05-06: 切り分け用の8分音符固定モードを解除。`SessionController` から `FORCE_EIGHTH_NOTE_MODE` と `playEighthNote()` 分岐を削除し、通常どおり `energy_rules` と `arp_patterns` に基づく `playCurrentStep()` を使うように戻した。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
 - 2026-05-06: `JAM-P5-05` drawer start 後に BPM 同期の4カウント吹き出し表示を追加。`1,2,3,4` を 1 拍ずつ表示し、次の拍で `SessionController.start()` する。カウント中に drawer stop するとキャンセルして停止表示に戻る。
 - 2026-05-06: `JAM-P5-06` host の drawer controller に `closeDrawer()` を公開し、JAM のカウントイン開始時に drawer を閉じるようにした。
+- 2026-05-06: `JAM-P8-01` 音ズレ切り分けの第一段階として `DEBUG_TIMING = false` に変更。`jam:grid`, `jam:step`, `jam:pose`, `jam:tone` の連続 trace を止め、ログ出力負荷を演奏タイミングから外した。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
+- 2026-05-06: `JAM-P8-02` 音ズレ切り分けの第二段階として首振りを完全停止。`POSE_CUE_LOG_ENABLED = false`, `POSE_OUTPUT_ENABLED = false` にし、JAM start 時の `setTorque(true)` も pose 出力有効時だけ呼ぶようにした。`posePolling = false` は維持してサーボ read は止めたままにする。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
+- 2026-05-06: `JAM-P8-03` `session/loop1.wav` を MOD resource に追加し、`JamLoopPlayer` で `loop1.maud` を `AudioOut.Samples` の `Infinity` repeat で再生する実験を実装。`SessionController` は `USE_LOOP_AUDIO = true` の間、JS Timer による tone 発火を止め、拍計算と首振りだけを継続する。首振りは `POSE_CUE_LOG_ENABLED = true`, `POSE_OUTPUT_ENABLED = true` に戻した。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run mod -- mods/jam/manifest.json` は `wav2maud loop1.maud`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。`npm_config_target=esp32/m5stack_cores3 npm run build` passed。
+- 2026-05-06: 実機で `rate/channels doesn't match output` が出たため、`loop1.wav` の自動変換をやめ、24kHz/mono/16bit/IMA ADPCM の `session/loop1.maud` を明示生成して resource に追加。`JamLoopPlayer` の `AudioOut` も 24kHz/16bit に明示した。生成後の `loop1.maud` は約99KB、`jam.xsa` は約119KB。`npm_config_target=esp32/m5stack_cores3 npm run mod -- mods/jam/manifest.json` は `copy loop1.maud`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
+- 2026-05-06: WAV/MAUD ループ方針に正式切り替え。`SessionController` からリアルタイムアルペジオ生成、tone 発火、energy/pattern/chord 解決を削除し、`arp.ts`, `harmony.ts`, `tone-player.ts` と manifest 登録も削除。`DEFAULT_SONG` と `SongConfig` は BPM、拍子、ループ長、表示タイトル中心に縮小した。`npx biome check mods/jam stackchan/main.ts stackchan/robot.ts stackchan/renderers-piu/app-controller.ts stackchan/drivers/scservo.ts stackchan/drivers/scservo-driver.ts stackchan/manifest.json stackchan/manifest_local.json` passed。`npm_config_target=esp32/m5stack_cores3 npm run mod -- mods/jam/manifest.json` は `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。生成後の `jam.xsa` は約109KB。

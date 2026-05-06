@@ -6,7 +6,8 @@
 ## Current Direction
 
 - JAM MOD は drawer toggle で開始/停止する。
-- 曲データはメモリ制約のため、v0 では正規化済み `DEFAULT_SONG` を直接使う。
+- 音源はリアルタイム合成ではなく、`session/loop1.maud` の WAV/MAUD ループ再生を使う。
+- 曲データは v0 では BPM、拍子、ループ長、表示タイトルだけを保持する。
 - 外部 YAML / LittleFS 読み込みは、実機で安全な配置方法とメモリ余裕を確認してから戻す。
 - CoreS3 の XS VM メモリは `stackchan/manifest.json` の `esp32/m5stack_cores3.creation` で Core2 相当に増やす。
 - JAM では `posePolling = false` を使い、サーボの read/update を音楽タイミングから外す。
@@ -17,7 +18,7 @@
 - `startedAt` を唯一の時間基準にする。
 - 発音時刻は「前回発音時刻 + interval」ではなく、常に `startedAt + gridSlot * gridDuration` から計算する。
 - これにより `Timer.repeat()` の揺れや処理遅延を累積させない。
-- 現在は切り分け用の8分音符固定モードを解除し、曲データの `energy_rules` と `arp_patterns` に従う。
+- 音は AudioOut の resource loop に任せ、JS Timer は首振り用の拍位置計算だけに使う。
 
 ## Neck Motion Plan
 

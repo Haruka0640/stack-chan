@@ -3,17 +3,25 @@
     "$(MODDABLE)/examples/manifest_mod.json",
     "$(MODDABLE)/examples/manifest_typings.json"
   ],
+  "defines": {
+    "audioOut": {
+      "bitsPerSample": 16,
+      "numChannels": 1,
+      "sampleRate": 24000
+    }
+  },
   "modules": {
     "*": "./mod",
-    "./domain/arp": "./domain/arp",
     "./domain/default-song": "./domain/default-song",
-    "./domain/harmony": "./domain/harmony",
+    "./domain/loop-player": "./domain/loop-player",
     "./domain/session-controller": "./domain/session-controller",
     "./domain/song-loader": "./domain/song-loader",
     "./domain/timing": "./domain/timing",
-    "./domain/tone-player": "./domain/tone-player",
     "./domain/types": "./domain/types",
     "./support/log": "./support/log",
     "./ui/session-display": "./ui/session-display"
+  },
+  "resources": {
+    "*": "./session/loop1.maud"
   }
 }
