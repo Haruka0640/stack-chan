@@ -11,7 +11,7 @@ type SCServoDriverProps = {
   waitForAck?: boolean
 }
 
-const MOTION_DIAGNOSTIC_LOG_LIMIT = 48
+const MOTION_DIAGNOSTIC_LOG_LIMIT = 0
 
 export class SCServoDriver {
   _pan: SCServo

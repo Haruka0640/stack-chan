@@ -1,7 +1,7 @@
 import Resource from 'Resource'
 import AudioOut from 'pins/audioout'
 
-const LOOP_RESOURCE = 'loop1.maud'
+const LOOP_RESOURCE = 'loop4.maud'
 const SAMPLE_RATE = 24000
 
 export class JamLoopPlayer {

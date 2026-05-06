@@ -22,6 +22,6 @@
     "./ui/session-display": "./ui/session-display"
   },
   "resources": {
-    "*": "./session/loop1.maud"
+    "*": "./session/loop4.maud"
   }
 }

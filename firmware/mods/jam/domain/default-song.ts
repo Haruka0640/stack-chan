@@ -6,14 +6,13 @@ export const DEFAULT_SONG: SongConfig = {
     bpm: 120,
     timeSignatureNumerator: 4,
     timeSignatureDenominator: 4,
-    totalBars: 24,
+    totalBars: 8,
   },
   settings: {
     loop: true,
   },
   motionSections: [
-    { name: 'quiet', startBar: 1, endBar: 8, pattern: 'vertical', pace: 'half' },
-    { name: 'build', startBar: 9, endBar: 16, pattern: 'diagonal', pace: 'quarter' },
-    { name: 'outro', startBar: 17, endBar: 24, pattern: 'turn', pace: 'half' },
+    { name: 'quiet', startBar: 1, endBar: 4, pattern: 'vertical', pace: 'half' },
+    { name: 'build', startBar: 5, endBar: 8, pattern: 'diagonal', pace: 'quarter' },
   ],
 }

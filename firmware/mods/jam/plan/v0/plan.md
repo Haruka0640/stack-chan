@@ -6,12 +6,12 @@
 ## Current Direction
 
 - JAM MOD は drawer toggle で開始/停止する。
-- 音源はリアルタイム合成ではなく、`session/loop1.maud` の WAV/MAUD ループ再生を使う。
+- 音源はリアルタイム合成ではなく、`session/loop3.maud` の WAV/MAUD ループ再生を使う。
 - 曲データは v0 では BPM、拍子、ループ長、表示タイトルだけを保持する。
 - 外部 YAML / LittleFS 読み込みは、実機で安全な配置方法とメモリ余裕を確認してから戻す。
 - CoreS3 の XS VM メモリは `stackchan/manifest.json` の `esp32/m5stack_cores3.creation` で Core2 相当に増やす。
 - JAM では `posePolling = false` を使い、サーボの read/update を音楽タイミングから外す。
-- 首振りは read と ACK 待ちを避け、拍グリッドから低頻度の yaw 書き込みだけを送る。
+- 首振りは read と ACK 待ちを避け、拍グリッドから低頻度の yaw/pitch 書き込みを送る。
 
 ## Timing Model
 

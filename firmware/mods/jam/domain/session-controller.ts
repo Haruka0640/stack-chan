@@ -6,7 +6,7 @@ import type { JamRobot, MotionPattern, MotionSection, SessionState, SongConfig, 
 const POSE_CUE_ENABLED = true
 const POSE_OUTPUT_ENABLED = true
 const POSE_MOVE_TIME_MS = 220
-const POSE_DIAGNOSTIC_LOG_LIMIT = 32
+const POSE_DIAGNOSTIC_LOG_LIMIT = 0
 const VERTICAL_PITCH_CENTIRAD = 15
 const DIAGONAL_YAW_CENTIRAD = 12
 const DIAGONAL_PITCH_CENTIRAD = 12
