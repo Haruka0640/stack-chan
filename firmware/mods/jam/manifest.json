@@ -1,0 +1,13 @@
+{
+  "include": [
+    "$(MODDABLE)/examples/manifest_mod.json",
+    "$(MODDABLE)/examples/manifest_typings.json"
+  ],
+  "modules": {
+    "*": "./mod",
+    "./domain/default-song": "./domain/default-song",
+    "./domain/song-loader": "./domain/song-loader",
+    "./domain/types": "./domain/types",
+    "./support/log": "./support/log"
+  }
+}

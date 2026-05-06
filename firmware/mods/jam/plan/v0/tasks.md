@@ -25,8 +25,8 @@
 ## Current Focus
 
 - Status: `[ ]`
-- Task: `JAM-P0-02`
-- Notes: 要件確認とタスクボード作成は完了。次は `mods/jam` の最小 MOD scaffold を作る。
+- Task: `JAM-P2-01`
+- Notes: YAML 読み込み、限定パーサー、正規化、バリデーションは完了。次は BPM と拍子から bar/beat を計算する。
 
 ## Implementation Plan
 
@@ -75,25 +75,25 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 - [x] `JAM-P0-02` v0 タスクボードを作成する。
   - Acceptance: `plan/v0/tasks.md` に実装順、完了条件、検証ログ欄がある。
   - Verification: ファイル作成のみ。ファームウェア挙動変更なし。
-- [ ] `JAM-P0-03` `mods/jam` の最小 MOD scaffold を作成する。
+- [x] `JAM-P0-03` `mods/jam` の最小 MOD scaffold を作成する。
   - Acceptance: `manifest.json`, `mod.ts`, `support/log.ts` があり、MOD として読み込める。
   - Verification: `npm run mod -- mods/jam/manifest.json` が TypeScript/XS 変換まで到達する。
-- [ ] `JAM-P0-04` Jam 用の型定義を作成する。
+- [x] `JAM-P0-04` Jam 用の型定義を作成する。
   - Acceptance: 要件の構造体相当が `domain/types.ts` に TypeScript type として定義されている。
   - Verification: `npx biome check mods/jam` が通る。
 
 ### JAM-P1: Song Loading and YAML
 
-- [ ] `JAM-P1-01` 内蔵サンプル曲を追加する。
+- [x] `JAM-P1-01` 内蔵サンプル曲を追加する。
   - Acceptance: 要件サンプル相当の曲データが `default-song.ts` または `session/song.yaml` にある。
   - Verification: ローダー未実装でもデータ構造をレビューできる。
-- [ ] `JAM-P1-02` `/session/song.yaml` の読み込み入口を実装する。
+- [x] `JAM-P1-02` `/session/song.yaml` の読み込み入口を実装する。
   - Acceptance: 読み込み成功時はファイル内容、失敗時は内蔵サンプルを返す。
   - Verification: ファイルなし環境でフォールバックして起動する。
-- [ ] `JAM-P1-03` 限定 YAML パーサーを実装する。
+- [x] `JAM-P1-03` 限定 YAML パーサーを実装する。
   - Acceptance: サンプル YAML の nested map、list item、inline array、quoted string、number、boolean を読める。
   - Verification: サンプル YAML を `SongConfig` に変換できる。
-- [ ] `JAM-P1-04` 曲データの正規化とバリデーションを実装する。
+- [x] `JAM-P1-04` 曲データの正規化とバリデーションを実装する。
   - Acceptance: `time_signature`, `notes`, `steps`, `energy_rules`, `progression` が型安全な値へ変換され、不正値は trace される。
   - Verification: 欠落や不正 chord 参照で安全にフォールバックまたは無音化できる。
 
@@ -196,3 +196,8 @@ YAML 読み込みは `/session/song.yaml` を第一候補にする。ただし�
 
 - 2026-05-06: `JAM-P0-01` `requirement.md` を確認し、Moddable TypeScript MOD としての実装方針を `Implementation Plan` に整理。ファームウェア挙動変更なし。
 - 2026-05-06: `JAM-P0-02` v0 タスクボードを作成。ファームウェア挙動変更なし。
+- 2026-05-06: `JAM-P0-03` `manifest.json`, `mod.ts`, `support/log.ts` を追加。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功。最後は既知の `xsbug.app` 起動エラー `kLSNoExecutableErr` で停止。
+- 2026-05-06: `JAM-P0-04` `domain/types.ts` に要件の構造体相当と `JamRobot` 型を追加。`npx biome check mods/jam` passed.
+- 2026-05-06: `JAM-P1-01` `domain/default-song.ts` に正規化済み `DEFAULT_SONG` と `DEFAULT_SONG_YAML` を追加し、開発用 `session/song.yaml` も追加。`npx biome check mods/jam` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
+- 2026-05-06: `JAM-P1-02` `domain/song-loader.ts` に `/session/song.yaml` 読み込み入口と `DEFAULT_SONG_YAML` フォールバックを追加し、起動時表示へ曲名を接続。`npx biome check mods/jam` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。
+- 2026-05-06: `JAM-P1-03`/`JAM-P1-04` `song-loader.ts` に限定 YAML パーサー、`SongConfig` 正規化、未知 chord/pattern の trace バリデーションを追加。`npx biome check mods/jam` passed。`npm run mod -- mods/jam/manifest.json` は `tsc`, `xsc`, `xsl jam.xsa` まで成功し、最後は既知の `xsbug.app` 起動エラーで停止。

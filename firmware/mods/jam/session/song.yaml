@@ -1,0 +1,91 @@
+song:
+  title: "Loop Rap Session"
+  bpm: 90
+  time_signature: "4/4"
+  total_bars: 24
+
+settings:
+  root_octave: 4
+  default_velocity: 80
+  tone_waveform: "square"
+  swing: 0.0
+  random_seed: 0
+  loop: true
+
+sections:
+  - name: "intro"
+    start_bar: 1
+    end_bar: 4
+    energy: 20
+  - name: "verse"
+    start_bar: 5
+    end_bar: 12
+    energy: 40
+  - name: "build"
+    start_bar: 13
+    end_bar: 16
+    energy: 65
+  - name: "climax"
+    start_bar: 17
+    end_bar: 24
+    energy: 90
+
+chords:
+  Am:
+    notes: [57, 60, 64, 69]
+  F:
+    notes: [53, 57, 60, 65]
+  C:
+    notes: [60, 64, 67, 72]
+  G:
+    notes: [55, 59, 62, 67]
+
+progression:
+  - start_bar: 1
+    length_bars: 1
+    chord: "Am"
+  - start_bar: 2
+    length_bars: 1
+    chord: "F"
+  - start_bar: 3
+    length_bars: 1
+    chord: "C"
+  - start_bar: 4
+    length_bars: 1
+    chord: "G"
+
+arp_patterns:
+  sparse:
+    steps: [0, 2]
+    note_length_ms: 180
+    gate_ms: 120
+  basic:
+    steps: [0, 1, 2, 1]
+    note_length_ms: 160
+    gate_ms: 100
+  up:
+    steps: [0, 1, 2, 3]
+    note_length_ms: 120
+    gate_ms: 80
+  excited:
+    steps: [0, 1, 2, 3, 2, 1, 2, 3]
+    note_length_ms: 90
+    gate_ms: 60
+
+energy_rules:
+  - min_energy: 0
+    max_energy: 29
+    arp_interval: "2bars"
+    patterns: ["sparse"]
+  - min_energy: 30
+    max_energy: 59
+    arp_interval: "1bar"
+    patterns: ["sparse", "basic"]
+  - min_energy: 60
+    max_energy: 79
+    arp_interval: "2beats"
+    patterns: ["basic", "up"]
+  - min_energy: 80
+    max_energy: 100
+    arp_interval: "1beat"
+    patterns: ["up", "excited"]
