@@ -1,24 +1,39 @@
 import { traceJam } from '../support/log'
 import { JamLoopPlayer } from './loop-player'
-import { calculateSongPosition } from './timing'
-import type { JamRobot, MotionPattern, MotionSection, SessionState, SongConfig, SongPosition } from './types'
+import { calculateSongPosition, getBeatDurationMs } from './timing'
+import type {
+  JamRobot,
+  MotionPattern,
+  MotionSection,
+  MouthSection,
+  SessionState,
+  SongConfig,
+  SongPosition,
+} from './types'
 
 const POSE_CUE_ENABLED = true
 const POSE_OUTPUT_ENABLED = true
 const POSE_MOVE_TIME_MS = 220
 const POSE_DIAGNOSTIC_LOG_LIMIT = 0
 const VERTICAL_PITCH_CENTIRAD = 15
-const DIAGONAL_YAW_CENTIRAD = 12
+const DIAGONAL_YAW_CENTIRAD = 6
 const DIAGONAL_PITCH_CENTIRAD = 12
 const TURN_YAW_CENTIRAD = 15
 const MAX_YAW_CENTIRAD = 12
 const MAX_PITCH_CENTIRAD = 10
+const MOUTH_CLOSE_PHASE = 0.58
 const DEFAULT_MOTION: MotionSection = {
   name: 'default',
   startBar: 1,
   endBar: 1,
   pattern: 'vertical',
   pace: 'half',
+}
+const DEFAULT_MOUTH: MouthSection = {
+  startBar: 1,
+  endBar: 1,
+  pattern: 'off',
+  amount: 0,
 }
 
 type PoseCue = {
@@ -33,6 +48,7 @@ export class SessionController {
   #robot: JamRobot
   #loopPlayer: JamLoopPlayer
   #lastPoseSlot = -1
+  #lastEmotionEventKey = ''
   #poseBusyUntil = 0
   #poseDiagnosticLogCount = 0
   #pose = {
@@ -65,6 +81,7 @@ export class SessionController {
     this.state.currentBar = 1
     this.state.currentBeat = 1
     this.#lastPoseSlot = -1
+    this.#lastEmotionEventKey = ''
     this.#poseBusyUntil = 0
     this.#poseDiagnosticLogCount = 0
     this.#robot.setPosePolling?.(false)
@@ -83,6 +100,7 @@ export class SessionController {
     this.state.active = false
     this.#loopPlayer.stop()
     this.#poseBusyUntil = 0
+    this.#robot.setMouthOpen?.(0)
     this.applyPoseCue({ yawCentirad: 0, pitchCentirad: 0, rollCentirad: 0 }, Date.now())
     traceJam('session controller stopped')
   }
@@ -104,7 +122,55 @@ export class SessionController {
 
     this.state.currentBar = position.currentBar
     this.state.currentBeat = position.currentBeat
+    this.emitMouthCue(position)
+    this.emitEmotionCue(position)
     this.emitPoseCue(position)
+  }
+
+  private emitMouthCue(position: SongPosition): void {
+    if (!this.#robot.setMouthOpen) return
+    const eventAmount = this.getMouthEventAmount(position.songElapsedMs)
+    if (eventAmount >= 0) {
+      this.#robot.setMouthOpen(eventAmount)
+      return
+    }
+
+    const section = this.getMouthSection(position.currentBar)
+    if (section.pattern === 'off' || section.amount <= 0) {
+      this.#robot.setMouthOpen(0)
+      return
+    }
+
+    const beatDurationMs = getBeatDurationMs(this.#song.song)
+    const unitMs = section.pattern === 'eighth' ? beatDurationMs / 2 : beatDurationMs
+    const phase = (position.songElapsedMs % unitMs) / unitMs
+    const amount = Math.max(0, Math.min(1, section.amount))
+    this.#robot.setMouthOpen(phase < MOUTH_CLOSE_PHASE ? amount : 0)
+  }
+
+  private getMouthEventAmount(songElapsedMs: number): number {
+    const events = this.#song.mouthEvents
+    if (events.length === 0) return -1
+    for (let index = 0; index < events.length; index += 1) {
+      const event = events[index]
+      if (songElapsedMs >= event.startMs && songElapsedMs < event.startMs + event.durationMs) {
+        return Math.max(0, Math.min(1, event.amount))
+      }
+    }
+    return 0
+  }
+
+  private emitEmotionCue(position: SongPosition): void {
+    if (!this.#robot.setEmotion) return
+    const eventIndex = this.#song.emotionEvents.findIndex(
+      (event) => event.bar === position.currentBar && (event.beat ?? 1) === position.currentBeat,
+    )
+    if (eventIndex < 0) return
+
+    const key = `${position.absoluteBarIndex}:${position.currentBeat}:${eventIndex}`
+    if (key === this.#lastEmotionEventKey) return
+    this.#lastEmotionEventKey = key
+    this.#robot.setEmotion(this.#song.emotionEvents[eventIndex].emotion)
   }
 
   private emitPoseCue(position: SongPosition): void {
@@ -127,6 +193,13 @@ export class SessionController {
       this.#song.motionSections.find((section) => currentBar >= section.startBar && currentBar <= section.endBar) ??
       this.#song.motionSections[0] ??
       DEFAULT_MOTION
+    )
+  }
+
+  private getMouthSection(currentBar: number): MouthSection {
+    return (
+      this.#song.mouthSections.find((section) => currentBar >= section.startBar && currentBar <= section.endBar) ??
+      DEFAULT_MOUTH
     )
   }
 

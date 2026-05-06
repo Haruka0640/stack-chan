@@ -21,10 +21,36 @@ export type MotionSection = {
   pace: MotionPace
 }
 
+export type JamEmotion = 'HAPPY' | 'SAD' | 'ANGRY' | 'SURPRISED' | 'NEUTRAL' | 'DOUBTFUL' | 'HOT' | 'SLEEPY' | 'COLD'
+
+export type EmotionEvent = {
+  bar: number
+  beat?: number
+  emotion: JamEmotion
+}
+
+export type MouthPattern = 'off' | 'beat' | 'eighth'
+
+export type MouthSection = {
+  startBar: number
+  endBar: number
+  pattern: MouthPattern
+  amount: number
+}
+
+export type MouthEvent = {
+  startMs: number
+  durationMs: number
+  amount: number
+}
+
 export type SongConfig = {
   song: SongInfo
   settings: SongSettings
   motionSections: MotionSection[]
+  emotionEvents: EmotionEvent[]
+  mouthSections: MouthSection[]
+  mouthEvents: MouthEvent[]
 }
 
 export type SessionState = {
@@ -76,6 +102,8 @@ export type JamRobot = {
     },
   ) => void
   hideBalloon?: () => void
+  setEmotion?: (emotion: JamEmotion) => void
+  setMouthOpen?: (value: number) => void
   tone?: (hz: number, duration: number, volume?: number) => Promise<void>
   setPosePolling?: (enabled: boolean) => void
   setTorque?: (torque: boolean) => Promise<void>

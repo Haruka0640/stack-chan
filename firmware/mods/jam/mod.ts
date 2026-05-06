@@ -4,7 +4,6 @@ import { loadSong } from './domain/song-loader'
 import { getBeatDurationMs } from './domain/timing'
 import type { JamRobot } from './domain/types'
 import { traceJam } from './support/log'
-import { formatSessionStatus } from './ui/session-display'
 
 const DRAWER_BUTTON_KEY = 'toggleJamSession'
 const SESSION_UPDATE_INTERVAL_MS = 16
@@ -18,32 +17,14 @@ function closeDrawer(robot: JamRobot): void {
   robot.application?.closeDrawer?.()
 }
 
-function showStatus(robot: JamRobot, text: string): void {
-  robot.showBalloon?.(text, {
-    left: 12,
-    right: 12,
-    bottom: 10,
-    minHeight: 58,
-  })
-}
-
 export function onRobotCreated(robot: JamRobot): void {
   traceJam('MOD started')
 
   const loadedSong = loadSong()
   const session = new SessionController(loadedSong.config, robot)
-  let lastDisplayText = ''
   let countInTimer: ReturnType<typeof Timer.set> | undefined
   let countInIndex = 0
-
-  const updateDisplay = (force = false) => {
-    const text = formatSessionStatus(session.song, session.state)
-    if (!force && text === lastDisplayText) return
-    lastDisplayText = text
-    showStatus(robot, text)
-  }
-
-  updateDisplay(true)
+  robot.hideBalloon?.()
 
   const clearCountIn = () => {
     if (countInTimer !== undefined) {
@@ -57,7 +38,6 @@ export function onRobotCreated(robot: JamRobot): void {
     clearCountIn()
     session.start(Date.now())
     setDrawerState(robot, true)
-    updateDisplay(true)
     traceJam('session started')
   }
 
@@ -68,9 +48,7 @@ export function onRobotCreated(robot: JamRobot): void {
       return
     }
 
-    const label = COUNT_IN_LABELS[countInIndex]
     countInIndex += 1
-    showStatus(robot, `${session.song.song.title}\n${label}`)
     countInTimer = Timer.set(stepCountIn, Math.round(getBeatDurationMs(session.song.song)))
   }
 
@@ -93,7 +71,7 @@ export function onRobotCreated(robot: JamRobot): void {
       traceJam('count-in stopped')
     }
     setDrawerState(robot, false)
-    updateDisplay(true)
+    robot.hideBalloon?.()
   }
 
   Timer.repeat(() => {
@@ -102,7 +80,7 @@ export function onRobotCreated(robot: JamRobot): void {
     session.update(now)
     if (wasActive !== session.state.active) {
       setDrawerState(robot, session.state.active)
-      updateDisplay(true)
+      robot.hideBalloon?.()
     }
   }, SESSION_UPDATE_INTERVAL_MS)
 

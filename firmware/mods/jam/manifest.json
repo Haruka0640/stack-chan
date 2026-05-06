@@ -18,8 +18,7 @@
     "./domain/song-loader": "./domain/song-loader",
     "./domain/timing": "./domain/timing",
     "./domain/types": "./domain/types",
-    "./support/log": "./support/log",
-    "./ui/session-display": "./ui/session-display"
+    "./support/log": "./support/log"
   },
   "resources": {
     "*": "./session/loop4.maud"
