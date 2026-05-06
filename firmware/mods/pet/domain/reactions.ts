@@ -6,6 +6,11 @@ import {
   REACTION_SLEEPY_PRIORITY,
   REACTION_SURPRISED_DURATION_MS,
   REACTION_SURPRISED_PRIORITY,
+  SLEEPY_MOTION_PITCH,
+  SLEEPY_MOTION_STEP_SECONDS,
+  SURPRISED_SOUND_DURATION_MS,
+  SURPRISED_SOUND_HZ,
+  SURPRISED_SOUND_VOLUME,
 } from './constants'
 import { now } from './state'
 import { type PetEmotion, type PetRobot, type PetRuntimeState, type Reaction, ReactionType } from './types'
@@ -76,6 +81,7 @@ function emotionForReaction(reaction: Reaction): PetEmotion {
 export function createPetReactionController(robot: PetRobot, state: PetRuntimeState): PetReactionController {
   let currentEmotion: PetEmotion | undefined
   let currentMouthOpen: number | undefined
+  let sleepyMotionRunning = false
 
   function applyMouthOpen(value: number): void {
     if (!robot.setMouthOpen || currentMouthOpen === value) {
@@ -94,6 +100,52 @@ export function createPetReactionController(robot: PetRobot, state: PetRuntimeSt
     tracePet(`expression set to ${emotion}`)
   }
 
+  async function playSurprisedSound(): Promise<void> {
+    if (!robot.tone) {
+      tracePet('surprised sound skipped because tone is not available')
+      return
+    }
+    try {
+      await robot.tone(SURPRISED_SOUND_HZ, SURPRISED_SOUND_DURATION_MS, SURPRISED_SOUND_VOLUME)
+    } catch (error) {
+      tracePet(`surprised sound failed: ${String(error)}`)
+    }
+  }
+
+  async function playSleepyMotion(): Promise<void> {
+    if (!robot.setPose) {
+      tracePet('sleepy motion skipped because setPose is not available')
+      return
+    }
+    if (sleepyMotionRunning) {
+      tracePet('sleepy motion skipped because a motion is already running')
+      return
+    }
+
+    sleepyMotionRunning = true
+    try {
+      await robot.setPose({ rotation: { y: 0, p: SLEEPY_MOTION_PITCH, r: 0 } }, SLEEPY_MOTION_STEP_SECONDS)
+      await robot.setPose({ rotation: { y: 0, p: 0, r: 0 } }, SLEEPY_MOTION_STEP_SECONDS)
+    } catch (error) {
+      tracePet(`sleepy motion failed: ${String(error)}`)
+    } finally {
+      sleepyMotionRunning = false
+    }
+  }
+
+  function startReactionEffects(type: ReactionType): void {
+    switch (type) {
+      case ReactionType.REACTION_SURPRISED:
+        void playSurprisedSound()
+        break
+      case ReactionType.REACTION_SLEEPY:
+        void playSleepyMotion()
+        break
+      case ReactionType.REACTION_IDLE:
+        break
+    }
+  }
+
   function startReaction(type: ReactionType): void {
     if (type === ReactionType.REACTION_IDLE) {
       state.currentReaction = makeReaction(type)
@@ -110,6 +162,7 @@ export function createPetReactionController(robot: PetRobot, state: PetRuntimeSt
 
     state.currentReaction = next
     tracePet(`reaction started ${type}`)
+    startReactionEffects(type)
   }
 
   function updateReaction(): void {

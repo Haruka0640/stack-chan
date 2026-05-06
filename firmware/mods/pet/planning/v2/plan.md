@@ -23,8 +23,8 @@
 ## Current Focus
 
 - Status: `[ ]`
-- Task: `V2-P7-01`
-- Notes: v2 のイベントキュー、単一 `currentReaction`、入力 polling、表情更新まで実装済み。次は任意の音・サーボフックを追加する。
+- Task: `V2-P8-04`
+- Notes: 実装タスクは完了。残りは CoreS3 実機で起動、タップ、スワイプ、放置、再刺激を確認する。
 
 ## Milestones
 
@@ -141,13 +141,13 @@
 
 ### V2-P7: Optional Sound and Servo Hooks
 
-- [ ] `V2-P7-01` `REACTION_SURPRISED` 開始時の音フックを追加する。
+- [x] `V2-P7-01` `REACTION_SURPRISED` 開始時の音フックを追加する。
   - Acceptance: `robot.tone` がある場合だけ短い高音を鳴らす。
   - Verification: `robot.tone` がない環境でエラーにならない。
-- [ ] `V2-P7-02` `REACTION_SLEEPY` 開始時のモーションフックを追加する。
+- [x] `V2-P7-02` `REACTION_SLEEPY` 開始時のモーションフックを追加する。
   - Acceptance: `robot.setPose` がある場合だけ安全な小さい動きを行う。
   - Verification: サーボ角度が小さく、連続入力で暴れない。
-- [ ] `V2-P7-03` 音・サーボ処理をリアクション開始時だけに限定する。
+- [x] `V2-P7-03` 音・サーボ処理をリアクション開始時だけに限定する。
   - Acceptance: `renderFace()` や入力処理から音・サーボを直接呼ばない。
   - Verification: 呼び出し経路をコードレビューで確認する。
 
@@ -193,3 +193,7 @@
 - 2026-05-06: `V2-P8-01` `npx biome check mods/pet` passed. 実行時に `pyenv: cannot rehash: /Users/haruka/.pyenv/shims isn't writable` が表示されたが、Biome 自体は成功。
 - 2026-05-06: `V2-P8-02` `npm run mod -- mods/pet/manifest.json` は `tsc`, `xsc`, `xsl pet.xsa` まで成功。最後は既知の `xsbug.app` 起動エラー `kLSNoExecutableErr` で停止。
 - 2026-05-06: `V2-P8-03` `npm_config_target=esp32/m5stack_cores3 npm run build` passed.
+- 2026-05-06: `V2-P7-01`/`V2-P7-02`/`V2-P7-03` `REACTION_SURPRISED` 開始時の短い高音と、`REACTION_SLEEPY` 開始時の小さい pitch motion を追加。音・サーボは `startReaction()` が受理した時だけ呼ばれる。
+- 2026-05-06: `V2-P8-01` `npx biome check mods/pet` passed after P7 changes.
+- 2026-05-06: `V2-P8-02` `npm run mod -- mods/pet/manifest.json` は `tsc`, `xsc`, `xsl pet.xsa` まで成功。最後は既知の `xsbug.app` 起動エラー `kLSNoExecutableErr` で停止。
+- 2026-05-06: `V2-P8-03` `npm_config_target=esp32/m5stack_cores3 npm run build` passed after P7 changes.
