@@ -1,12 +1,13 @@
 import { traceJam } from '../support/log'
 import { arpIntervalToMs, getChordTone, getPattern, midiNoteToHz, selectPatternName, velocityToVolume } from './arp'
 import { getCurrentChord, getCurrentEnergyRule, getCurrentSectionIndex } from './harmony'
-import { calculateSongPosition } from './timing'
+import { calculateSongPosition, getBeatDurationMs } from './timing'
+import { JamTonePlayer } from './tone-player'
 import type { ArpPattern, EnergyRule, SessionState, SongConfig } from './types'
 
 const DEBUG_TIMING = true
 const DEBUG_LOG_LIMIT = 48
-const DIAGNOSTIC_AUDIO_ENABLED = false
+const FORCE_EIGHTH_NOTE_MODE = true
 
 type ArpRuntime = {
   pattern: ArpPattern | null
@@ -14,16 +15,19 @@ type ArpRuntime = {
   lastPatternSlot: number
   lastStepSlot: number
   lastGridBeat: number
+  lastEighthSlot: number
 }
 
 export class SessionController {
   readonly state: SessionState
   #arp: ArpRuntime
   #song: SongConfig
+  #tonePlayer: JamTonePlayer
   #debugLogCount = 0
 
   constructor(song: SongConfig) {
     this.#song = song
+    this.#tonePlayer = new JamTonePlayer()
     this.state = {
       active: false,
       startedAt: 0,
@@ -40,6 +44,7 @@ export class SessionController {
       lastPatternSlot: -1,
       lastStepSlot: -1,
       lastGridBeat: -1,
+      lastEighthSlot: -1,
     }
   }
 
@@ -61,6 +66,7 @@ export class SessionController {
     this.#arp.lastPatternSlot = -1
     this.#arp.lastStepSlot = -1
     this.#arp.lastGridBeat = -1
+    this.#arp.lastEighthSlot = -1
     this.#debugLogCount = 0
     traceJam('session controller started')
   }
@@ -68,6 +74,7 @@ export class SessionController {
   stop(): void {
     this.state.active = false
     this.#arp.pattern = null
+    this.#tonePlayer.stop()
     traceJam('session controller stopped')
   }
 
@@ -109,6 +116,10 @@ export class SessionController {
     }
 
     this.debugGrid(position.absoluteBeatIndex, position.elapsedMs, rule, intervalMs)
+    if (FORCE_EIGHTH_NOTE_MODE) {
+      this.playEighthNote(now, position.elapsedMs)
+      return
+    }
     this.playCurrentStep(now, rule, position.elapsedMs)
   }
 
@@ -179,7 +190,7 @@ export class SessionController {
         ' hz=',
         Math.round(hz),
         ' audio=',
-        DIAGNOSTIC_AUDIO_ENABLED ? 'on' : 'off',
+        'on',
         ' gate=',
         Math.round(gateMs),
         ' vol=',
@@ -187,11 +198,56 @@ export class SessionController {
         '\n',
       )
     }
-    if (DIAGNOSTIC_AUDIO_ENABLED) {
-      trace('jam:tone disabled build invariant violated now=', Math.round(elapsedMs), '\n')
-    } else if (this.canDebugTiming()) {
-      trace('jam:tone off now=', Math.round(elapsedMs), '\n')
-    }
+    this.logToneResult(elapsedMs, this.#tonePlayer.play(now, hz, gateMs, volume))
     this.#arp.lastStepSlot = stepSlot
+  }
+
+  private playEighthNote(now: number, elapsedMs: number): void {
+    const eighthDurationMs = getBeatDurationMs(this.#song.song) / 2
+    const eighthSlot = Math.floor(elapsedMs / eighthDurationMs)
+    if (eighthSlot === this.#arp.lastEighthSlot) return
+
+    const dueElapsedMs = eighthSlot * eighthDurationMs
+    const dueAt = this.state.startedAt + dueElapsedMs
+    const lateMs = now - dueAt
+    const chord = getCurrentChord(this.#song, this.state.currentBar)
+    const note = chord.notes[0] ?? 60
+    const hz = midiNoteToHz(note)
+    const volume = velocityToVolume(this.#song.settings.defaultVelocity)
+    const gateMs = Math.min(90, eighthDurationMs * 0.5)
+    if (this.canDebugTiming()) {
+      trace(
+        'jam:eighth slot=',
+        eighthSlot,
+        ' due=',
+        Math.round(dueElapsedMs),
+        ' now=',
+        Math.round(elapsedMs),
+        ' late=',
+        Math.round(lateMs),
+        ' bar=',
+        this.state.currentBar,
+        ' beat=',
+        this.state.currentBeat,
+        ' note=',
+        note,
+        ' hz=',
+        Math.round(hz),
+        '\n',
+      )
+    }
+    this.logToneResult(elapsedMs, this.#tonePlayer.play(now, hz, gateMs, volume))
+    this.#arp.lastEighthSlot = eighthSlot
+  }
+
+  private logToneResult(elapsedMs: number, result: { played: boolean; busyUntil: number }): void {
+    if (!this.canDebugTiming()) return
+    trace(
+      result.played ? 'jam:tone ok now=' : 'jam:tone skip now=',
+      Math.round(elapsedMs),
+      ' busyUntil=',
+      Math.round(result.busyUntil - this.state.startedAt),
+      '\n',
+    )
   }
 }
