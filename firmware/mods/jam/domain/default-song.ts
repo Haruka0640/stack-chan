@@ -11,4 +11,9 @@ export const DEFAULT_SONG: SongConfig = {
   settings: {
     loop: true,
   },
+  motionSections: [
+    { name: 'quiet', startBar: 1, endBar: 8, pattern: 'vertical', pace: 'half' },
+    { name: 'build', startBar: 9, endBar: 16, pattern: 'diagonal', pace: 'quarter' },
+    { name: 'outro', startBar: 17, endBar: 24, pattern: 'turn', pace: 'half' },
+  ],
 }

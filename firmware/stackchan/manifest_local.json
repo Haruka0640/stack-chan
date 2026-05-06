@@ -15,7 +15,7 @@
       "type": "scservo",
       "panId": 1,
       "tiltId": 2,
-      "enableTilt": false,
+      "enableTilt": true,
       "traceMotion": false,
       "waitForAck": false
     },

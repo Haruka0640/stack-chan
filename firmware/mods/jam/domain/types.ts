@@ -10,9 +10,21 @@ export type SongSettings = {
   loop: boolean
 }
 
+export type MotionPattern = 'vertical' | 'diagonal' | 'turn'
+export type MotionPace = 'half' | 'quarter'
+
+export type MotionSection = {
+  name: string
+  startBar: number
+  endBar: number
+  pattern: MotionPattern
+  pace: MotionPace
+}
+
 export type SongConfig = {
   song: SongInfo
   settings: SongSettings
+  motionSections: MotionSection[]
 }
 
 export type SessionState = {

@@ -11,6 +11,8 @@ type SCServoDriverProps = {
   waitForAck?: boolean
 }
 
+const MOTION_DIAGNOSTIC_LOG_LIMIT = 48
+
 export class SCServoDriver {
   _pan: SCServo
   _tilt: SCServo
@@ -19,6 +21,7 @@ export class SCServoDriver {
   #enableTilt: boolean
   #traceMotion: boolean
   #waitForAck: boolean
+  #motionDiagnosticLogCount = 0
 
   constructor(param: SCServoDriverProps) {
     this._pan = new SCServo({ id: param.panId })
@@ -27,9 +30,15 @@ export class SCServoDriver {
     this.#enableTilt = param.enableTilt ?? true
     this.#traceMotion = param.traceMotion ?? true
     this.#waitForAck = param.waitForAck ?? true
+    this.traceMotionDiagnostic(
+      `scservo config panId=${param.panId} tiltId=${param.tiltId} enablePan=${this.#enablePan} enableTilt=${this.#enableTilt} waitForAck=${this.#waitForAck} traceMotion=${this.#traceMotion}`,
+    )
   }
 
   async setTorque(torque: boolean): Promise<void> {
+    this.traceMotionDiagnostic(
+      `scservo torque=${torque} enablePan=${this.#enablePan} enableTilt=${this.#enableTilt} waitForAck=${this.#waitForAck}`,
+    )
     if (!this.#waitForAck) {
       if (this.#enablePan) this._pan.setTorqueNoWait(torque)
       if (this.#enableTilt) this._tilt.setTorqueNoWait(torque)
@@ -47,6 +56,9 @@ export class SCServoDriver {
     if (this.#traceMotion) {
       trace(`applying (${ori.y}, ${ori.p}) => (${panAngle}, ${tiltAngle})\n`)
     }
+    this.traceMotionDiagnostic(
+      `scservo apply y=${ori.y} p=${ori.p} timeMs=${time * 1000} panAngle=${panAngle} tiltAngle=${tiltAngle} enablePan=${this.#enablePan} enableTilt=${this.#enableTilt} waitForAck=${this.#waitForAck}`,
+    )
     if (!this.#waitForAck) {
       if (time === 0) {
         if (this.#enablePan) this._pan.setAngleNoWait(panAngle)
@@ -90,5 +102,11 @@ export class SCServoDriver {
         r: 0.0,
       },
     }
+  }
+
+  private traceMotionDiagnostic(message: string): void {
+    if (this.#motionDiagnosticLogCount >= MOTION_DIAGNOSTIC_LOG_LIMIT) return
+    this.#motionDiagnosticLogCount += 1
+    trace(`${message}\n`)
   }
 }
