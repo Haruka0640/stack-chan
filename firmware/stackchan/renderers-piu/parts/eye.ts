@@ -175,8 +175,8 @@ export const Eye = Container.template((opts: EyeOptions) => {
       lastGazeY = NaN
       onFaceContext(_container: PiuContainer, face: FaceContext) {
         const eye = face.eyes[opts.side]
-        const offsetX = (eye.gazeX ?? 0) * 2
-        const offsetY = (eye.gazeY ?? 0) * 2
+        const offsetX = (eye.gazeX ?? 0) * 4
+        const offsetY = (eye.gazeY ?? 0) * 4
         if (offsetX === this.lastGazeX && offsetY === this.lastGazeY) return
         this.lastGazeX = offsetX
         this.lastGazeY = offsetY

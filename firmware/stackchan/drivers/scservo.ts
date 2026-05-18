@@ -188,7 +188,7 @@ class SCServo {
         receive: config.serial?.receive ?? 16,
         transmit: config.serial?.transmit ?? 17,
         baud: 1_000_000,
-        port: 2,
+        port: config.serial?.port ?? 2,
       })
     }
     if (packetHandler.hasCallbackOf(id)) {
@@ -224,6 +224,9 @@ class SCServo {
       packetHandler.write(this.#txBuf.subarray(0, idx))
     } finally {
       packetHandler.format = originalFormat
+    }
+    if (command === COMMAND.WRITE) {
+      return undefined
     }
     return this.#waitSlot.wait(40, () => {
       trace('timeout.\n')

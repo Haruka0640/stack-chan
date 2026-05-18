@@ -568,8 +568,8 @@ export class Robot {
         const relative = Vector3.sub(relativeGazePoint, [pos.x, pos.y, pos.z])
         const { y, p } = Rotation.fromVector3(relative)
         const eye = this.#faceContext.eyes[key]
-        eye.gazeX = Math.cos(y)
-        eye.gazeY = Math.cos(p)
+        eye.gazeX = Math.sin(y)
+        eye.gazeY = Math.sin(p)
       }
     }
     this.#renderer.update(INTERVAL_FACE, this.#faceContext)
